@@ -39,23 +39,23 @@ pub fn decoder() -> decode.Decoder(WeightType) {
 
 pub fn update(
   pool pool: db.DbPool,
+  name name: String,
   id id: Int,
-  updated_at updated_at: Int,
 ) -> Result(WeightType, db.DbError) {
   use connection <- db.get_connection(pool)
-  update_wc(connection: connection, id: id, updated_at: updated_at)
+  update_wc(connection: connection, name: name, id: id)
 }
 
 pub fn update_wc(
   connection connection: db.Connection,
+  name name: String,
   id id: Int,
-  updated_at updated_at: Int,
 ) -> Result(WeightType, db.DbError) {
   case
     db.query_with(
       connection,
-      "UPDATE weight_types SET updated_at = $2 WHERE id = $1 RETURNING *",
-      [db.int(id), db.int(updated_at)],
+      "UPDATE weight_types SET updated_at = unixepoch(), name = $1 WHERE id = $2 RETURNING *",
+      [db.string(name), db.int(id)],
       row_decoder(),
     )
   {
@@ -68,19 +68,19 @@ pub fn update_wc(
 
 pub fn update_or_fail(
   pool pool: db.DbPool,
+  name name: String,
   id id: Int,
-  updated_at updated_at: Int,
 ) -> WeightType {
   use connection <- db.get_connection(pool)
-  update_or_fail_wc(connection: connection, id: id, updated_at: updated_at)
+  update_or_fail_wc(connection: connection, name: name, id: id)
 }
 
 pub fn update_or_fail_wc(
   connection connection: db.Connection,
+  name name: String,
   id id: Int,
-  updated_at updated_at: Int,
 ) -> WeightType {
-  update_wc(connection: connection, id: id, updated_at: updated_at)
+  update_wc(connection: connection, name: name, id: id)
   |> db.expect
 }
 
@@ -124,7 +124,32 @@ pub fn create_or_fail_wc(
   |> db.expect
 }
 
-pub fn delete(pool pool: db.DbPool, id id: Int) -> Result(Int, db.DbError) {
+pub type DeleteWeightType {
+  DeleteWeightType(id: Int)
+}
+
+fn delete_weight_type_row_decoder() -> decode.Decoder(DeleteWeightType) {
+  use id <- decode.field(0, decode.int)
+  decode.success(DeleteWeightType(id))
+}
+
+pub fn delete_weight_type_encoder() -> fn(DeleteWeightType) -> json.Json {
+  fn(model: DeleteWeightType) {
+    json.object([
+      #("id", json.int(model.id)),
+    ])
+  }
+}
+
+pub fn delete_weight_type_decoder() -> decode.Decoder(DeleteWeightType) {
+  use id <- decode.field("id", decode.int)
+  decode.success(DeleteWeightType(id))
+}
+
+pub fn delete(
+  pool pool: db.DbPool,
+  id id: Int,
+) -> Result(DeleteWeightType, db.DbError) {
   use connection <- db.get_connection(pool)
   delete_wc(connection: connection, id: id)
 }
@@ -132,13 +157,23 @@ pub fn delete(pool pool: db.DbPool, id id: Int) -> Result(Int, db.DbError) {
 pub fn delete_wc(
   connection connection: db.Connection,
   id id: Int,
-) -> Result(Int, db.DbError) {
-  db.exec_with(connection, "DELETE FROM weight_types WHERE id = $1", [
-    db.int(id),
-  ])
+) -> Result(DeleteWeightType, db.DbError) {
+  case
+    db.query_with(
+      connection,
+      "DELETE FROM weight_types WHERE id = $1 RETURNING id",
+      [db.int(id)],
+      delete_weight_type_row_decoder(),
+    )
+  {
+    Ok(db.QueryResult(_, [row])) -> Ok(row)
+    Ok(db.QueryResult(_, [])) -> Error(db.NotFound)
+    Ok(_) -> Error(db.QueryError("Expected single row"))
+    Error(e) -> Error(e)
+  }
 }
 
-pub fn delete_or_fail(pool pool: db.DbPool, id id: Int) -> Int {
+pub fn delete_or_fail(pool pool: db.DbPool, id id: Int) -> DeleteWeightType {
   use connection <- db.get_connection(pool)
   delete_or_fail_wc(connection: connection, id: id)
 }
@@ -146,7 +181,7 @@ pub fn delete_or_fail(pool pool: db.DbPool, id id: Int) -> Int {
 pub fn delete_or_fail_wc(
   connection connection: db.Connection,
   id id: Int,
-) -> Int {
+) -> DeleteWeightType {
   delete_wc(connection: connection, id: id)
   |> db.expect
 }

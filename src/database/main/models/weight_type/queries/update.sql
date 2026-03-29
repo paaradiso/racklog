@@ -1,7 +1,4 @@
--- TODO: Add the columns you'd like to update and update 
--- the placeholders
-
 UPDATE weight_types
-SET updated_at = $2
-WHERE id = $1
+SET updated_at = unixepoch(), name = $1
+WHERE id = $2
 RETURNING *

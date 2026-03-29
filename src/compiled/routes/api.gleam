@@ -28,18 +28,12 @@ pub fn routes(path, method, ctx) {
         _ -> response.method_not_allowed([Get])
       }
 
-    ["api", "weight_types", weight_type] ->
+    ["api", "weight_types", id] ->
       case method {
-        Get -> api_weight_type_controller.show(ctx, weight_type)
-        Patch -> api_weight_type_controller.update(ctx, weight_type)
-        Delete -> api_weight_type_controller.destroy(ctx, weight_type)
+        Get -> api_weight_type_controller.show(ctx, id)
+        Patch -> api_weight_type_controller.update(ctx, id)
+        Delete -> api_weight_type_controller.destroy(ctx, id)
         _ -> response.method_not_allowed([Get, Patch, Delete])
-      }
-
-    ["api", "weight_types", weight_type, "edit"] ->
-      case method {
-        Get -> api_weight_type_controller.edit(ctx, weight_type)
-        _ -> response.method_not_allowed([Get])
       }
 
     _ -> response.not_found()

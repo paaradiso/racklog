@@ -1,6 +1,9 @@
 import app/app.{type App}
+import app/http/validators/weight_type_store
 import database/main/models/weight_type/gen/weight_type
+import gleam/int
 import gleam/json
+import glimr/db/db
 import glimr/http/context.{type Context}
 import glimr/http/http.{type Response}
 import glimr/response/response
@@ -16,27 +19,50 @@ pub fn index(ctx: Context(App)) -> Response {
   |> response.json(200)
 }
 
-/// @get "/api/weight_types/:weight_type"
-pub fn show(ctx: Context(App), weight_type: String) -> Response {
-  todo
+/// @get "/api/weight_types/:id"
+pub fn show(ctx: Context(App), id: String) -> Response {
+  let assert Ok(id) = int.parse(id)
+
+  weight_type.find_or_fail(ctx.app.db, id)
+  |> weight_type.encoder()
+  |> response.json(200)
 }
 
 /// @post "/api/weight_types"
 pub fn store(ctx: Context(App)) -> Response {
-  todo
+  use validated <- weight_type_store.validate(ctx)
+  weight_type.create_or_fail(ctx.app.db, name: validated.name)
+  |> weight_type.encoder()
+  |> response.json(200)
 }
 
-/// @get "/api/weight_types/:weight_type/edit"
-pub fn edit(ctx: Context(App), weight_type: String) -> Response {
-  todo
+/// @patch "/api/weight_types/:id"
+pub fn update(ctx: Context(App), id: String) -> Response {
+  let assert Ok(id) = int.parse(id)
+  use validated <- weight_type_store.validate(ctx)
+
+  case weight_type.update(ctx.app.db, validated.name, id) {
+    Ok(updated_weight_type) ->
+      updated_weight_type |> weight_type.encoder() |> response.json(200)
+    Error(db.NotFound) -> {
+      json.object([#("error", json.string("Weight type not found."))])
+      |> response.json(404)
+    }
+    Error(_) -> {
+      json.object([
+        #("error", json.string("An internal error occurred.")),
+      ])
+      |> response.json(500)
+    }
+  }
 }
 
-/// @patch "/api/weight_types/:weight_type"
-pub fn update(ctx: Context(App), weight_type: String) -> Response {
-  todo
-}
+/// @delete "/api/weight_types/:id"
+pub fn destroy(ctx: Context(App), id: String) -> Response {
+  let assert Ok(id) = int.parse(id)
 
-/// @delete "/api/weight_types/:weight_type"
-pub fn destroy(ctx: Context(App), weight_type: String) -> Response {
-  todo
+  case weight_type.delete(ctx.app.db, id) {
+    Ok(weight_type.DeleteWeightType(_)) -> response.empty(204)
+    Error(_) -> response.empty(404)
+  }
 }
