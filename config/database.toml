@@ -1,0 +1,38 @@
+# Database Config
+#
+# Database configuration for your application. Define one
+# or more named connections using different drivers (postgres,
+# postgres_url, sqlite). Connections are available throughout
+# your application via the context system.
+
+[connections.main]
+  # The database driver to use: "postgres", "postgres_url",
+  # or "sqlite".
+  driver = "sqlite"
+
+  # The name of the database to connect to. Used by the
+  # postgres and sqlite drivers.
+  database = "${DB_DATABASE}"
+
+  # The number of connections to maintain in the
+  # connection pool.
+  pool_size = "${DB_POOL_SIZE}"
+
+# Add as many database connections as you need. Below are
+# some examples setting up a postgres, or postgres url
+# connection. Uncomment and change the connection
+# name to whatever you prefer.
+
+# [connections.postgres_example]
+#   driver = "postgres"
+#   host = "${DB_HOST}"
+#   port = "${DB_PORT}"
+#   database = "${DB_DATABASE}"
+#   username = "${DB_USERNAME}"
+#   password = "${DB_PASSWORD}"
+#   pool_size = "${DB_POOL_SIZE}"
+
+# [connections.postgres_url_example]
+#   driver = "postgres_url"
+#   url = "${DB_URL}"
+#   pool_size = "${DB_POOL_SIZE}"

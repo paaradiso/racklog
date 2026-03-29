@@ -1,0 +1,15 @@
+{
+  "tables": {
+    "weight_types": {
+      "columns": [
+        {"name": "id", "type": "Id", "nullable": false, "has_default": false},
+        {"name": "name", "type": "String", "nullable": false, "has_default": false},
+        {"name": "created_at", "type": "UnixTimestamp", "nullable": false, "has_default": false},
+        {"name": "updated_at", "type": "UnixTimestamp", "nullable": false, "has_default": false}
+      ],
+      "indexes": [
+        {"columns": ["name"], "unique": true, "name": null}
+      ]
+    }
+  }
+}

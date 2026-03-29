@@ -1,0 +1,34 @@
+---
+import glimr/vite
+---
+
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg" />
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600"
+      rel="stylesheet"
+    />
+
+    {{{ vite.tags("src/resources/ts/app.ts") }}}
+
+    <!-- header scripts and meta tags -->
+    <slot name="head" />
+
+    <title><slot name="meta_title" /></title>
+  </head>
+  <body class="antialiased">
+    <slot />
+
+    <footer l-if="slot.footer">
+      <slot name="footer" />
+    </footer>
+
+    <!-- footer scripts -->
+    <slot name="footer_scripts" />
+  </body>
+</html>
