@@ -41,20 +41,9 @@ pub fn update(ctx: Context(App), id: String) -> Response {
   let assert Ok(id) = int.parse(id)
   use validated <- weight_type_store.validate(ctx)
 
-  case weight_type.update(ctx.app.db, validated.name, id) {
-    Ok(updated_weight_type) ->
-      updated_weight_type |> weight_type.encoder() |> response.json(200)
-    Error(db.NotFound) -> {
-      json.object([#("error", json.string("Weight type not found."))])
-      |> response.json(404)
-    }
-    Error(_) -> {
-      json.object([
-        #("error", json.string("An internal error occurred.")),
-      ])
-      |> response.json(500)
-    }
-  }
+  weight_type.update_or_fail(ctx.app.db, validated.name, id)
+  |> weight_type.encoder()
+  |> response.json(200)
 }
 
 /// @delete "/api/weight_types/:id"
