@@ -1,0 +1,9 @@
+---
+import glimr/http/context.{type Context}
+import database/main/models/weight_type/gen/weight_type.{type WeightType}
+
+props(weight_types: List(WeightType))
+---
+
+<div l-for="weight_type in weight_types">{{ weight_type.name }}</div>
+
