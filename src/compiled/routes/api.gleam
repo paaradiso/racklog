@@ -11,6 +11,7 @@
 import app/http/controllers/api/exercise_controller as api_exercise_controller
 import app/http/controllers/api/weight_type_controller as api_weight_type_controller
 import app/http/controllers/api/welcome_controller as api_welcome_controller
+import app/http/controllers/api/workout_controller as api_workout_controller
 import gleam/http.{Delete, Get, Patch, Post}
 import glimr/response/response
 
@@ -36,6 +37,13 @@ pub fn routes(path, method, ctx) {
         _ -> response.method_not_allowed([Get])
       }
 
+    ["api", "workouts"] ->
+      case method {
+        Get -> api_workout_controller.index(ctx)
+        Post -> api_workout_controller.store(ctx)
+        _ -> response.method_not_allowed([Get, Post])
+      }
+
     ["api", "exercises", id] ->
       case method {
         Get -> api_exercise_controller.show(ctx, id)
@@ -49,6 +57,14 @@ pub fn routes(path, method, ctx) {
         Get -> api_weight_type_controller.show(ctx, id)
         Patch -> api_weight_type_controller.update(ctx, id)
         Delete -> api_weight_type_controller.destroy(ctx, id)
+        _ -> response.method_not_allowed([Get, Patch, Delete])
+      }
+
+    ["api", "workouts", id] ->
+      case method {
+        Get -> api_workout_controller.show(ctx, id)
+        Patch -> api_workout_controller.update(ctx, id)
+        Delete -> api_workout_controller.destroy(ctx, id)
         _ -> response.method_not_allowed([Get, Patch, Delete])
       }
 
