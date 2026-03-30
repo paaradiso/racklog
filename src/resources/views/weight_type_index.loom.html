@@ -4,5 +4,8 @@ import database/main/models/weight_type/gen/weight_type.{type WeightType}
 props(weight_types: List(WeightType))
 ---
 
-<div l-for="weight_type in weight_types">{{ weight_type.name }}</div>
-
+<x-layouts:app>
+  <div l-for="weight_type in weight_types" class="text-red-400">
+    {{ weight_type.name }}
+  </div>
+</x-layouts:app>

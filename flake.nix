@@ -19,6 +19,7 @@
             erlang
             rebar3
             nodejs
+            prettierd
           ];
 
           shellHook = ''

@@ -27,7 +27,7 @@ pub fn render(
   <> runtime.render_attributes(attributes)
   <> ">"
   <> slot_meta_title
-  <> "</title>\n  </head>\n  <body class=\"antialiased\">\n    "
+  <> "</title>\n  </head>\n  <body class=\"antialiased\">\n    <header\n      class=\"bg-background/80 border-muted z-10 flex h-16 w-full items-center justify-center border-b shadow-md backdrop-blur-sm\"\n    >\n      <div class=\"container flex items-center justify-between\">\n        <a href=\"/\" class=\"text-foreground text-2xl font-bold\">racklog</a>\n        <nav class=\"hidden items-center gap-2 md:flex\">\n          <a href=\"/login\">Login</a>\n          <a href=\"/signup\">Register</a>\n        </nav>\n      </div>\n    </header>\n\n    "
   <> slot
   <> "\n\n    "
   <> case slot_footer != "" {

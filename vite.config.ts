@@ -10,30 +10,30 @@ import type { AddressInfo } from "net";
  * tags pointing at Vite's HMR server instead of the manifest.
  */
 function hotFile(): Plugin {
-  const hotPath = resolve("priv/static/hot");
-  const cleanup = () => {
-    try {
-      unlinkSync(hotPath);
-    } catch {}
-  };
+    const hotPath = resolve("priv/static/hot");
+    const cleanup = () => {
+        try {
+            unlinkSync(hotPath);
+        } catch { }
+    };
 
-  return {
-    name: "glimr-hot-file",
-    buildStart() {
-      cleanup();
-    },
-    configureServer(server) {
-      server.httpServer?.once("listening", () => {
-        const addr = server.httpServer!.address() as AddressInfo;
-        mkdirSync(resolve("priv/static"), { recursive: true });
-        writeFileSync(hotPath, `http://localhost:${addr.port}`);
+    return {
+        name: "glimr-hot-file",
+        buildStart() {
+            cleanup();
+        },
+        configureServer(server) {
+            server.httpServer?.once("listening", () => {
+                const addr = server.httpServer!.address() as AddressInfo;
+                mkdirSync(resolve("priv/static"), { recursive: true });
+                writeFileSync(hotPath, `http://localhost:${addr.port}`);
 
-        process.on("exit", cleanup);
-        process.on("SIGINT", () => process.exit());
-        process.on("SIGTERM", () => process.exit());
-      });
-    },
-  };
+                process.on("exit", cleanup);
+                process.on("SIGINT", () => process.exit());
+                process.on("SIGTERM", () => process.exit());
+            });
+        },
+    };
 }
 
 /**
@@ -42,44 +42,44 @@ function hotFile(): Plugin {
  * reload to the browser through Vite's HMR WebSocket.
  */
 function glimrReload(): Plugin {
-  const reloadPath = resolve("priv/static/.reload");
-  return {
-    name: "glimr-reload",
-    configureServer(server) {
-      server.watcher.add(reloadPath);
-      server.watcher.on("change", (path) => {
-        if (path === reloadPath) {
-          server.ws.send({ type: "full-reload" });
-        }
-      });
-    },
-    handleHotUpdate({ file }) {
-      if (file.endsWith(".loom.html")) {
-        return [];
-      }
-    },
-  };
+    const reloadPath = resolve("priv/static/.reload");
+    return {
+        name: "glimr-reload",
+        configureServer(server) {
+            server.watcher.add(reloadPath);
+            server.watcher.on("change", (path) => {
+                if (path === reloadPath) {
+                    server.ws.send({ type: "full-reload" });
+                }
+            });
+        },
+        handleHotUpdate({ file }) {
+            if (file.endsWith(".loom.html")) {
+                return [];
+            }
+        },
+    };
 }
 
 export default defineConfig({
-  plugins: [tailwindcss(), hotFile(), glimrReload()],
-  resolve: {
-    alias: {
-      "@": resolve(import.meta.dirname!, "src/resources/ts"),
+    plugins: [tailwindcss(), hotFile(), glimrReload()],
+    resolve: {
+        alias: {
+            "@": resolve(import.meta.dirname!, "src/resources/ts"),
+        },
     },
-  },
-  build: {
-    outDir: "priv/static",
-    emptyOutDir: false,
-    manifest: true,
-    rollupOptions: {
-      input: "src/resources/ts/app.ts",
+    build: {
+        outDir: "priv/static",
+        emptyOutDir: false,
+        manifest: true,
+        rollupOptions: {
+            input: "src/resources/ts/app.ts",
+        },
     },
-  },
-  server: {
-    cors: true,
-    watch: {
-      ignored: ["**/*.gleam", "**/build/**"],
+    server: {
+        cors: true,
+        watch: {
+            ignored: ["**/*.gleam", "**/build/**"],
+        },
     },
-  },
 });

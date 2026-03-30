@@ -1,21 +1,59 @@
-/*
- * App Stylesheet
- *
- * This is the main CSS entry point for your application.
- * Tailwind is imported below — add your own custom styles,
- * @theme overrides, and @source directives after it.
- */
+@import url("https://api.fontshare.com/v2/css?f[]=general-sans@300,400,500,600,700&display=swap");
 
 @import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@layer base {
-  body {
-    font-size: 15px;
-    color: theme(--color-mist-600);
-  }
+:root {
+  --background: var(--color-white);
+  --foreground: var(--color-stone-950);
+
+  --card: var(--color-stone-100);
+  --card-foreground: var(--color-stone-950);
+
+  --primary: var(--color-amber-500);
+  --primary-foreground: var(--color-stone-950);
+
+  --secondary: var(--color-stone-200);
+  --secondary-foreground: var(--color-stone-900);
+
+  --destructive: var(--color-red-600);
+  --destructive-foreground: var(--color-white);
+
+  --muted: var(--color-stone-200);
+  --muted-foreground: var(--color-stone-500);
+
+  --accent: var(--color-lime-600);
+  --accent-foreground: var(--color-white);
+
+  --border: var(--color-stone-200);
+  --input: var(--color-stone-200);
+  --ring: var(--color-amber-500);
+
+  --bg-primary-subtle: var(--color-amber-50);
+  --bg-accent-subtle: var(--color-lime-50);
 }
 
 @theme {
-  --font-sans: "Barlow", sans-serif;
-  --text-base: 15px;
+  --font-sans: "General Sans";
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-bg-primary-subtle: var(--bg-primary-subtle);
+  --color-bg-accent-subtle: var(--bg-accent-subtle);
 }

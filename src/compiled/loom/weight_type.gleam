@@ -10,5 +10,5 @@ import database/main/models/weight_type/gen/weight_type.{type WeightType}
 import glimr/loom/runtime
 
 pub fn render(weight_type weight_type: WeightType) -> String {
-  "" <> "\n<div>" <> runtime.display(weight_type.name) <> "</div>\n\n"
+  "" <> "\n<div>" <> runtime.display(weight_type.name) <> "</div>\n"
 }
