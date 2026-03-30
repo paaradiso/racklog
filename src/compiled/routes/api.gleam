@@ -10,7 +10,6 @@
 
 import app/http/controllers/api/exercise_controller as api_exercise_controller
 import app/http/controllers/api/weight_type_controller as api_weight_type_controller
-import app/http/controllers/api/welcome_controller as api_welcome_controller
 import app/http/controllers/api/workout_controller as api_workout_controller
 import gleam/http.{Delete, Get, Patch, Post}
 import glimr/response/response
@@ -29,12 +28,6 @@ pub fn routes(path, method, ctx) {
         Get -> api_weight_type_controller.index(ctx)
         Post -> api_weight_type_controller.store(ctx)
         _ -> response.method_not_allowed([Get, Post])
-      }
-
-    ["api", "welcome"] ->
-      case method {
-        Get -> api_welcome_controller.show()
-        _ -> response.method_not_allowed([Get])
       }
 
     ["api", "workouts"] ->

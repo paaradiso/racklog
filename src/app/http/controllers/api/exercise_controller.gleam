@@ -1,7 +1,6 @@
 import app/app.{type App}
 import app/http/validators/exercise_store
 import database/main/models/exercise/gen/exercise
-import gleam/int
 import gleam/json
 import glimr/http/context.{type Context}
 import glimr/http/http.{type Response}
@@ -21,9 +20,9 @@ pub fn index(ctx: Context(App)) -> Response {
 
 /// @get "/api/exercises/:id"
 pub fn show(ctx: Context(App), id: String) -> Response {
-  use parsed_id <- helpers.with_parsed_id(id)
+  use id <- helpers.with_parsed_id(id)
 
-  exercise.find_or_fail(ctx.app.db, parsed_id)
+  exercise.find_or_fail(ctx.app.db, id)
   |> exercise.encoder()
   |> response.json(200)
 }
@@ -38,19 +37,19 @@ pub fn store(ctx: Context(App)) -> Response {
 
 /// @patch "/api/exercises/:id"
 pub fn update(ctx: Context(App), id: String) -> Response {
-  use parsed_id <- helpers.with_parsed_id(id)
+  use id <- helpers.with_parsed_id(id)
   use validated <- exercise_store.validate(ctx)
 
-  exercise.update_or_fail(ctx.app.db, validated.name, parsed_id)
+  exercise.update_or_fail(ctx.app.db, validated.name, id)
   |> exercise.encoder()
   |> response.json(200)
 }
 
 /// @delete "/api/exercises/:id"
 pub fn destroy(ctx: Context(App), id: String) -> Response {
-  use parsed_id <- helpers.with_parsed_id(id)
+  use id <- helpers.with_parsed_id(id)
 
-  case exercise.delete(ctx.app.db, parsed_id) {
+  case exercise.delete(ctx.app.db, id) {
     Ok(exercise.DeleteExercise(_)) -> response.empty(204)
     Error(_) -> response.empty(404)
   }

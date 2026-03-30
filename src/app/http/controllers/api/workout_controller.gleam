@@ -22,9 +22,9 @@ pub fn index(ctx: Context(App)) -> Response {
 
 /// @get "/api/workouts/:id"
 pub fn show(ctx: Context(App), id: String) -> Response {
-  use parsed_id <- helpers.with_parsed_id(id)
+  use id <- helpers.with_parsed_id(id)
 
-  workout.find_or_fail(ctx.app.db, parsed_id)
+  workout.find_or_fail(ctx.app.db, id)
   |> workout.find_workout_encoder()
   |> response.json(200)
 }
@@ -47,9 +47,9 @@ pub fn store(ctx: Context(App)) -> Response {
 
 /// @patch "/api/workouts/:id"
 pub fn update(ctx: Context(App), id: String) -> Response {
-  use parsed_id <- helpers.with_parsed_id(id)
+  use id <- helpers.with_parsed_id(id)
   use validated <- workout_update_store.validate(ctx)
-  let existing = workout.find_or_fail(ctx.app.db, parsed_id)
+  let existing = workout.find_or_fail(ctx.app.db, id)
 
   workout.update_or_fail(
     ctx.app.db,
@@ -58,7 +58,7 @@ pub fn update(ctx: Context(App), id: String) -> Response {
     validated.weight |> option.unwrap(existing.weight),
     validated.reps |> option.unwrap(existing.reps),
     validated.notes |> option.unwrap(existing.notes),
-    parsed_id,
+    id,
   )
   |> workout.update_workout_encoder()
   |> response.json(200)
@@ -66,9 +66,9 @@ pub fn update(ctx: Context(App), id: String) -> Response {
 
 /// @delete "/api/workouts/:id"
 pub fn destroy(ctx: Context(App), id: String) -> Response {
-  use parsed_id <- helpers.with_parsed_id(id)
+  use id <- helpers.with_parsed_id(id)
 
-  case workout.delete(ctx.app.db, parsed_id) {
+  case workout.delete(ctx.app.db, id) {
     Ok(workout.DeleteWorkout(_)) -> response.empty(204)
     Error(_) -> response.empty(404)
   }

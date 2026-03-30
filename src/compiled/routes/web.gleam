@@ -9,18 +9,11 @@
 ////
 
 import app/http/controllers/weight_type_controller
-import app/http/controllers/welcome_controller
 import gleam/http.{Get}
 import glimr/response/response
 
 pub fn routes(path, method, ctx) {
   case path {
-    [] ->
-      case method {
-        Get -> welcome_controller.show()
-        _ -> response.method_not_allowed([Get])
-      }
-
     ["weight_types"] ->
       case method {
         Get -> weight_type_controller.index(ctx)

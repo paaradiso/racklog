@@ -2,7 +2,6 @@ import app/app.{type App}
 import compiled/loom/weight_type as weight_type_view
 import compiled/loom/weight_type_index
 import database/main/models/weight_type/gen/weight_type
-import gleam/json
 import glimr/http/context.{type Context}
 import glimr/http/http.{type Response}
 import glimr/response/response

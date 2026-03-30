@@ -7,7 +7,6 @@
 ////
 
 import database/main/models/weight_type/gen/weight_type.{type WeightType}
-import glimr/http/context.{type Context}
 import glimr/loom/runtime
 
 pub fn render(weight_type weight_type: WeightType) -> String {
