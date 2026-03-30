@@ -10,6 +10,7 @@
 ////
 
 import app/app.{type App}
+import app/http/middleware/load_user
 import glimr/http/context.{type Context}
 import glimr/http/http.{type Response}
 import glimr/http/kernel.{type MiddlewareGroup}
@@ -37,6 +38,7 @@ pub fn handle(
         rescue_crashes.run,
         handle_head.run,
         load_session.run,
+        load_user.run,
         // ...
       ]
       |> middleware.apply(ctx, router)
@@ -54,6 +56,7 @@ pub fn handle(
         rescue_crashes.run,
         handle_head.run,
         load_session.run,
+        load_user.run,
         // ...
       ]
       |> middleware.apply(ctx, router)

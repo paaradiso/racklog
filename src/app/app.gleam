@@ -5,6 +5,8 @@
 //// live here so controllers can access them via ctx.app.
 ////
 
+import database/main/models/user/gen/user
+import gleam/option.{type Option}
 import glimr/cache/cache.{type CachePool}
 import glimr/db/db.{type DbPool}
 
@@ -12,6 +14,7 @@ pub type App {
   App(
     db: DbPool,
     cache: CachePool,
+    user: Option(user.User),
     // ...
   )
 }

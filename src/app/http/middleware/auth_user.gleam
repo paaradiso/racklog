@@ -1,0 +1,16 @@
+import app/app.{type App}
+import gleam/option
+import glimr/http/context.{type Context}
+import glimr/http/http.{type Response}
+import glimr/http/kernel.{type Next}
+import glimr/response/redirect
+
+/// Where to redirect unauthenticated users.
+pub const guest_redirect = "/login"
+
+pub fn run(ctx: Context(App), next: Next(App)) -> Response {
+  case ctx.app.user {
+    option.Some(_) -> next(ctx)
+    option.None -> redirect.to(guest_redirect)
+  }
+}

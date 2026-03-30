@@ -5,6 +5,7 @@
 ////
 
 import app/app
+import gleam/option
 import glimr/cache/file_cache
 import glimr_sqlite/sqlite
 
@@ -14,6 +15,7 @@ pub fn start() -> app.App {
   app.App(
     db: sqlite.start("main"),
     cache: file_cache.start("main"),
+    user: option.None,
     // ...
   )
 }

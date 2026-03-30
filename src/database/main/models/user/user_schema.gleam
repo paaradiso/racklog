@@ -1,0 +1,21 @@
+import glimr/db/schema
+
+pub const table_name = "users"
+
+pub const authenticatable = True
+
+pub const max_login_attempts = 5
+
+pub const lockout_seconds = 60
+
+pub fn definition() {
+  schema.table(table_name, [
+    schema.id(),
+    schema.string("email"),
+    schema.string("password"),
+    schema.unix_timestamps(),
+  ])
+  |> schema.indexes([
+    schema.unique(["email"]),
+  ])
+}
