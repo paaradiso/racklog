@@ -87,6 +87,7 @@ pub type FindWorkout {
     reps: Int,
     notes: String,
     created_at: Int,
+    updated_at: Int,
   )
 }
 
@@ -100,6 +101,7 @@ fn find_workout_row_decoder() -> decode.Decoder(FindWorkout) {
   use reps <- decode.field(6, decode.int)
   use notes <- decode.field(7, decode.string)
   use created_at <- decode.field(8, decode.int)
+  use updated_at <- decode.field(9, decode.int)
   decode.success(FindWorkout(
     id,
     exercise_id,
@@ -110,6 +112,7 @@ fn find_workout_row_decoder() -> decode.Decoder(FindWorkout) {
     reps,
     notes,
     created_at,
+    updated_at,
   ))
 }
 
@@ -125,6 +128,7 @@ pub fn find_workout_encoder() -> fn(FindWorkout) -> json.Json {
       #("reps", json.int(model.reps)),
       #("notes", json.string(model.notes)),
       #("created_at", json.int(model.created_at)),
+      #("updated_at", json.int(model.updated_at)),
     ])
   }
 }
@@ -139,6 +143,7 @@ pub fn find_workout_decoder() -> decode.Decoder(FindWorkout) {
   use reps <- decode.field("reps", decode.int)
   use notes <- decode.field("notes", decode.string)
   use created_at <- decode.field("created_at", decode.int)
+  use updated_at <- decode.field("updated_at", decode.int)
   decode.success(FindWorkout(
     id,
     exercise_id,
@@ -149,6 +154,7 @@ pub fn find_workout_decoder() -> decode.Decoder(FindWorkout) {
     reps,
     notes,
     created_at,
+    updated_at,
   ))
 }
 
@@ -164,7 +170,7 @@ pub fn find_wc(
   case
     db.query_with(
       connection,
-      "SELECT w.id, w.exercise_id, e.name AS exercise_name, w.weight_type_id, wt.name AS weight_type_name, w.weight, w.reps, w.notes, w.created_at FROM workouts w JOIN exercises e ON w.exercise_id = e.id JOIN weight_types wt ON w.weight_type_id = wt.id WHERE w.id = $1 ORDER BY w.created_at DESC;",
+      "SELECT w.id, w.exercise_id, e.name AS exercise_name, w.weight_type_id, wt.name AS weight_type_name, w.weight, w.reps, w.notes, w.created_at, w.updated_at FROM workouts w JOIN exercises e ON w.exercise_id = e.id JOIN weight_types wt ON w.weight_type_id = wt.id WHERE w.id = $1 ORDER BY w.created_at DESC;",
       [db.int(id)],
       find_workout_row_decoder(),
     )
@@ -199,6 +205,8 @@ pub type ListWorkout {
     weight: Int,
     reps: Int,
     notes: String,
+    created_at: Int,
+    updated_at: Int,
   )
 }
 
@@ -211,6 +219,8 @@ fn list_workout_row_decoder() -> decode.Decoder(ListWorkout) {
   use weight <- decode.field(5, decode.int)
   use reps <- decode.field(6, decode.int)
   use notes <- decode.field(7, decode.string)
+  use created_at <- decode.field(8, decode.int)
+  use updated_at <- decode.field(9, decode.int)
   decode.success(ListWorkout(
     id,
     exercise_id,
@@ -220,6 +230,8 @@ fn list_workout_row_decoder() -> decode.Decoder(ListWorkout) {
     weight,
     reps,
     notes,
+    created_at,
+    updated_at,
   ))
 }
 
@@ -234,6 +246,8 @@ pub fn list_workout_encoder() -> fn(ListWorkout) -> json.Json {
       #("weight", json.int(model.weight)),
       #("reps", json.int(model.reps)),
       #("notes", json.string(model.notes)),
+      #("created_at", json.int(model.created_at)),
+      #("updated_at", json.int(model.updated_at)),
     ])
   }
 }
@@ -247,6 +261,8 @@ pub fn list_workout_decoder() -> decode.Decoder(ListWorkout) {
   use weight <- decode.field("weight", decode.int)
   use reps <- decode.field("reps", decode.int)
   use notes <- decode.field("notes", decode.string)
+  use created_at <- decode.field("created_at", decode.int)
+  use updated_at <- decode.field("updated_at", decode.int)
   decode.success(ListWorkout(
     id,
     exercise_id,
@@ -256,6 +272,8 @@ pub fn list_workout_decoder() -> decode.Decoder(ListWorkout) {
     weight,
     reps,
     notes,
+    created_at,
+    updated_at,
   ))
 }
 
@@ -270,7 +288,7 @@ pub fn list_wc(
   case
     db.query_with(
       connection,
-      "SELECT w.id, w.exercise_id, e.name AS exercise_name, w.weight_type_id, wt.name AS weight_type_name, w.weight, w.reps, w.notes FROM workouts w JOIN exercises e ON w.exercise_id = e.id JOIN weight_types wt ON w.weight_type_id = wt.id ORDER BY w.created_at DESC;",
+      "SELECT w.id, w.exercise_id, e.name AS exercise_name, w.weight_type_id, wt.name AS weight_type_name, w.weight, w.reps, w.notes, w.created_at, w.updated_at FROM workouts w JOIN exercises e ON w.exercise_id = e.id JOIN weight_types wt ON w.weight_type_id = wt.id ORDER BY w.created_at DESC;",
       [],
       list_workout_row_decoder(),
     )
@@ -292,6 +310,88 @@ pub fn list_or_fail_wc(
   |> db.expect
 }
 
+pub type CreateWorkout {
+  CreateWorkout(
+    id: Int,
+    exercise_id: Int,
+    exercise_name: String,
+    weight_type_id: Int,
+    weight_type_name: String,
+    weight: Int,
+    reps: Int,
+    notes: String,
+    created_at: Int,
+    updated_at: Int,
+  )
+}
+
+fn create_workout_row_decoder() -> decode.Decoder(CreateWorkout) {
+  use id <- decode.field(0, decode.int)
+  use exercise_id <- decode.field(1, decode.int)
+  use exercise_name <- decode.field(2, decode.string)
+  use weight_type_id <- decode.field(3, decode.int)
+  use weight_type_name <- decode.field(4, decode.string)
+  use weight <- decode.field(5, decode.int)
+  use reps <- decode.field(6, decode.int)
+  use notes <- decode.field(7, decode.string)
+  use created_at <- decode.field(8, decode.int)
+  use updated_at <- decode.field(9, decode.int)
+  decode.success(CreateWorkout(
+    id,
+    exercise_id,
+    exercise_name,
+    weight_type_id,
+    weight_type_name,
+    weight,
+    reps,
+    notes,
+    created_at,
+    updated_at,
+  ))
+}
+
+pub fn create_workout_encoder() -> fn(CreateWorkout) -> json.Json {
+  fn(model: CreateWorkout) {
+    json.object([
+      #("id", json.int(model.id)),
+      #("exercise_id", json.int(model.exercise_id)),
+      #("exercise_name", json.string(model.exercise_name)),
+      #("weight_type_id", json.int(model.weight_type_id)),
+      #("weight_type_name", json.string(model.weight_type_name)),
+      #("weight", json.int(model.weight)),
+      #("reps", json.int(model.reps)),
+      #("notes", json.string(model.notes)),
+      #("created_at", json.int(model.created_at)),
+      #("updated_at", json.int(model.updated_at)),
+    ])
+  }
+}
+
+pub fn create_workout_decoder() -> decode.Decoder(CreateWorkout) {
+  use id <- decode.field("id", decode.int)
+  use exercise_id <- decode.field("exercise_id", decode.int)
+  use exercise_name <- decode.field("exercise_name", decode.string)
+  use weight_type_id <- decode.field("weight_type_id", decode.int)
+  use weight_type_name <- decode.field("weight_type_name", decode.string)
+  use weight <- decode.field("weight", decode.int)
+  use reps <- decode.field("reps", decode.int)
+  use notes <- decode.field("notes", decode.string)
+  use created_at <- decode.field("created_at", decode.int)
+  use updated_at <- decode.field("updated_at", decode.int)
+  decode.success(CreateWorkout(
+    id,
+    exercise_id,
+    exercise_name,
+    weight_type_id,
+    weight_type_name,
+    weight,
+    reps,
+    notes,
+    created_at,
+    updated_at,
+  ))
+}
+
 pub fn create(
   pool pool: db.DbPool,
   exercise_id exercise_id: Int,
@@ -299,7 +399,7 @@ pub fn create(
   weight weight: Int,
   reps reps: Int,
   notes notes: String,
-) -> Result(Workout, db.DbError) {
+) -> Result(CreateWorkout, db.DbError) {
   use connection <- db.get_connection(pool)
   create_wc(
     connection: connection,
@@ -318,11 +418,11 @@ pub fn create_wc(
   weight weight: Int,
   reps reps: Int,
   notes notes: String,
-) -> Result(Workout, db.DbError) {
+) -> Result(CreateWorkout, db.DbError) {
   case
     db.query_with(
       connection,
-      "INSERT INTO workouts (exercise_id, weight_type_id, weight, reps, notes, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, unixepoch(), unixepoch()) RETURNING *",
+      "INSERT INTO workouts (exercise_id, weight_type_id, weight, reps, notes, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, unixepoch(), unixepoch()) RETURNING id, exercise_id, (SELECT name FROM exercises WHERE id = workouts.exercise_id) AS exercise_name, weight_type_id, (SELECT name FROM weight_types WHERE id = workouts.weight_type_id) AS weight_type_name, weight, reps, notes, created_at, updated_at",
       [
         db.int(exercise_id),
         db.int(weight_type_id),
@@ -330,7 +430,7 @@ pub fn create_wc(
         db.int(reps),
         db.string(notes),
       ],
-      row_decoder(),
+      create_workout_row_decoder(),
     )
   {
     Ok(db.QueryResult(_, [row])) -> Ok(row)
@@ -347,7 +447,7 @@ pub fn create_or_fail(
   weight weight: Int,
   reps reps: Int,
   notes notes: String,
-) -> Workout {
+) -> CreateWorkout {
   use connection <- db.get_connection(pool)
   create_or_fail_wc(
     connection: connection,
@@ -366,7 +466,7 @@ pub fn create_or_fail_wc(
   weight weight: Int,
   reps reps: Int,
   notes notes: String,
-) -> Workout {
+) -> CreateWorkout {
   create_wc(
     connection: connection,
     exercise_id: exercise_id,
@@ -378,6 +478,88 @@ pub fn create_or_fail_wc(
   |> db.expect
 }
 
+pub type UpdateWorkout {
+  UpdateWorkout(
+    id: Int,
+    exercise_id: Int,
+    exercise_name: String,
+    weight_type_id: Int,
+    weight_type_name: String,
+    weight: Int,
+    reps: Int,
+    notes: String,
+    created_at: Int,
+    updated_at: Int,
+  )
+}
+
+fn update_workout_row_decoder() -> decode.Decoder(UpdateWorkout) {
+  use id <- decode.field(0, decode.int)
+  use exercise_id <- decode.field(1, decode.int)
+  use exercise_name <- decode.field(2, decode.string)
+  use weight_type_id <- decode.field(3, decode.int)
+  use weight_type_name <- decode.field(4, decode.string)
+  use weight <- decode.field(5, decode.int)
+  use reps <- decode.field(6, decode.int)
+  use notes <- decode.field(7, decode.string)
+  use created_at <- decode.field(8, decode.int)
+  use updated_at <- decode.field(9, decode.int)
+  decode.success(UpdateWorkout(
+    id,
+    exercise_id,
+    exercise_name,
+    weight_type_id,
+    weight_type_name,
+    weight,
+    reps,
+    notes,
+    created_at,
+    updated_at,
+  ))
+}
+
+pub fn update_workout_encoder() -> fn(UpdateWorkout) -> json.Json {
+  fn(model: UpdateWorkout) {
+    json.object([
+      #("id", json.int(model.id)),
+      #("exercise_id", json.int(model.exercise_id)),
+      #("exercise_name", json.string(model.exercise_name)),
+      #("weight_type_id", json.int(model.weight_type_id)),
+      #("weight_type_name", json.string(model.weight_type_name)),
+      #("weight", json.int(model.weight)),
+      #("reps", json.int(model.reps)),
+      #("notes", json.string(model.notes)),
+      #("created_at", json.int(model.created_at)),
+      #("updated_at", json.int(model.updated_at)),
+    ])
+  }
+}
+
+pub fn update_workout_decoder() -> decode.Decoder(UpdateWorkout) {
+  use id <- decode.field("id", decode.int)
+  use exercise_id <- decode.field("exercise_id", decode.int)
+  use exercise_name <- decode.field("exercise_name", decode.string)
+  use weight_type_id <- decode.field("weight_type_id", decode.int)
+  use weight_type_name <- decode.field("weight_type_name", decode.string)
+  use weight <- decode.field("weight", decode.int)
+  use reps <- decode.field("reps", decode.int)
+  use notes <- decode.field("notes", decode.string)
+  use created_at <- decode.field("created_at", decode.int)
+  use updated_at <- decode.field("updated_at", decode.int)
+  decode.success(UpdateWorkout(
+    id,
+    exercise_id,
+    exercise_name,
+    weight_type_id,
+    weight_type_name,
+    weight,
+    reps,
+    notes,
+    created_at,
+    updated_at,
+  ))
+}
+
 pub fn update(
   pool pool: db.DbPool,
   exercise_id exercise_id: Int,
@@ -386,7 +568,7 @@ pub fn update(
   reps reps: Int,
   notes notes: String,
   id id: Int,
-) -> Result(Workout, db.DbError) {
+) -> Result(UpdateWorkout, db.DbError) {
   use connection <- db.get_connection(pool)
   update_wc(
     connection: connection,
@@ -407,11 +589,11 @@ pub fn update_wc(
   reps reps: Int,
   notes notes: String,
   id id: Int,
-) -> Result(Workout, db.DbError) {
+) -> Result(UpdateWorkout, db.DbError) {
   case
     db.query_with(
       connection,
-      "UPDATE workouts SET updated_at = unixepoch(), exercise_id = $1, weight_type_id = $2, weight = $3, reps = $4, notes = $5 WHERE id = $6 RETURNING *",
+      "UPDATE workouts SET updated_at = unixepoch(), exercise_id = $1, weight_type_id = $2, weight = $3, reps = $4, notes = $5 WHERE id = $6 RETURNING id, exercise_id, (SELECT name FROM exercises WHERE id = workouts.exercise_id) AS exercise_name, weight_type_id, (SELECT name FROM weight_types WHERE id = workouts.weight_type_id) AS weight_type_name, weight, reps, notes, created_at, updated_at",
       [
         db.int(exercise_id),
         db.int(weight_type_id),
@@ -420,7 +602,7 @@ pub fn update_wc(
         db.string(notes),
         db.int(id),
       ],
-      row_decoder(),
+      update_workout_row_decoder(),
     )
   {
     Ok(db.QueryResult(_, [row])) -> Ok(row)
@@ -438,7 +620,7 @@ pub fn update_or_fail(
   reps reps: Int,
   notes notes: String,
   id id: Int,
-) -> Workout {
+) -> UpdateWorkout {
   use connection <- db.get_connection(pool)
   update_or_fail_wc(
     connection: connection,
@@ -459,7 +641,7 @@ pub fn update_or_fail_wc(
   reps reps: Int,
   notes notes: String,
   id id: Int,
-) -> Workout {
+) -> UpdateWorkout {
   update_wc(
     connection: connection,
     exercise_id: exercise_id,

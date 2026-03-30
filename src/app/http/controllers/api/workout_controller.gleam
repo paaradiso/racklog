@@ -1,8 +1,9 @@
 import app/app.{type App}
 import app/http/validators/workout_store
+import app/http/validators/workout_update_store
 import database/main/models/workout/gen/workout
-import gleam/int
 import gleam/json
+import gleam/option
 import glimr/http/context.{type Context}
 import glimr/http/http.{type Response}
 import glimr/response/response
@@ -40,25 +41,26 @@ pub fn store(ctx: Context(App)) -> Response {
     validated.reps,
     validated.notes,
   )
-  |> workout.encoder()
+  |> workout.create_workout_encoder()
   |> response.json(200)
 }
 
 /// @patch "/api/workouts/:id"
 pub fn update(ctx: Context(App), id: String) -> Response {
   use parsed_id <- helpers.with_parsed_id(id)
-  use validated <- workout_store.validate(ctx)
+  use validated <- workout_update_store.validate(ctx)
+  let existing = workout.find_or_fail(ctx.app.db, parsed_id)
 
   workout.update_or_fail(
     ctx.app.db,
-    validated.exercise_id,
-    validated.weight_type_id,
-    validated.weight,
-    validated.reps,
-    validated.notes,
+    validated.exercise_id |> option.unwrap(existing.exercise_id),
+    validated.weight_type_id |> option.unwrap(existing.weight_type_id),
+    validated.weight |> option.unwrap(existing.weight),
+    validated.reps |> option.unwrap(existing.reps),
+    validated.notes |> option.unwrap(existing.notes),
     parsed_id,
   )
-  |> workout.encoder()
+  |> workout.update_workout_encoder()
   |> response.json(200)
 }
 
