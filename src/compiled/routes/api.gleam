@@ -8,6 +8,7 @@
 //// https://github.com/glimr-org/glimr?tab=readme-ov-file#direct-pattern-matching
 ////
 
+import app/http/controllers/api/exercise_controller as api_exercise_controller
 import app/http/controllers/api/weight_type_controller as api_weight_type_controller
 import app/http/controllers/api/welcome_controller as api_welcome_controller
 import gleam/http.{Delete, Get, Patch, Post}
@@ -15,6 +16,13 @@ import glimr/response/response
 
 pub fn routes(path, method, ctx) {
   case path {
+    ["api", "exercises"] ->
+      case method {
+        Get -> api_exercise_controller.index(ctx)
+        Post -> api_exercise_controller.store(ctx)
+        _ -> response.method_not_allowed([Get, Post])
+      }
+
     ["api", "weight_types"] ->
       case method {
         Get -> api_weight_type_controller.index(ctx)
@@ -26,6 +34,14 @@ pub fn routes(path, method, ctx) {
       case method {
         Get -> api_welcome_controller.show()
         _ -> response.method_not_allowed([Get])
+      }
+
+    ["api", "exercises", id] ->
+      case method {
+        Get -> api_exercise_controller.show(ctx, id)
+        Patch -> api_exercise_controller.update(ctx, id)
+        Delete -> api_exercise_controller.destroy(ctx, id)
+        _ -> response.method_not_allowed([Get, Patch, Delete])
       }
 
     ["api", "weight_types", id] ->

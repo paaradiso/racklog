@@ -8,7 +8,7 @@ import glimr_sqlite/sqlite
 // docs: https://github.com/glimr-org/glimr?tab=readme-ov-file#console-commands
 
 /// The console command description.
-const description = "Seed the database with common weight types"
+const description = "Seed the database with weight types"
 
 /// Define the console command and its properties.
 ///
