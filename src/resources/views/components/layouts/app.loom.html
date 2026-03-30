@@ -26,15 +26,24 @@ import glimr/vite
       class="bg-background/80 border-muted z-10 flex h-16 w-full items-center justify-center border-b shadow-md backdrop-blur-sm"
     >
       <div class="container flex items-center justify-between">
-        <a href="/" class="text-foreground text-2xl font-bold">racklog</a>
-        <nav class="hidden items-center gap-2 md:flex">
-          <a href="/login">Login</a>
-          <a href="/signup">Register</a>
+        <nav class="flex items-center gap-4">
+          <a href="/" class="text-foreground text-2xl font-bold mr-4"
+            >racklog</a
+          >
+          <a href="/input">Input</a>
+          <a href="/exercises">Exercises</a>
+        </nav>
+
+        <nav class="hidden items-center gap-4 md:flex">
+          <a href="/">Placeholder</a>
+          <a href="/">Placeholder</a>
         </nav>
       </div>
     </header>
 
-    <slot />
+    <main class="flex justify-center items-center">
+      <slot />
+    </main>
 
     <footer l-if="slot.footer">
       <slot name="footer" />

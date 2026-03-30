@@ -1,0 +1,11 @@
+---
+import database/main/models/exercise/gen/exercise.{type Exercise}
+
+props( exercises: List(Exercise))
+---
+
+<x-layouts:app>
+  <div class="container flex flex-col gap-2 justify-center items-center">
+    <div l-for="exercise in exercises">{{ exercise.name }}</div>
+  </div>
+</x-layouts:app>

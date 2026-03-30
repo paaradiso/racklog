@@ -8,12 +8,26 @@
 //// https://github.com/glimr-org/glimr?tab=readme-ov-file#direct-pattern-matching
 ////
 
+import app/http/controllers/exercises_controller
+import app/http/controllers/index_controller
 import app/http/controllers/weight_type_controller
 import gleam/http.{Get}
 import glimr/response/response
 
 pub fn routes(path, method, ctx) {
   case path {
+    [] ->
+      case method {
+        Get -> index_controller.index(ctx)
+        _ -> response.method_not_allowed([Get])
+      }
+
+    ["exercises"] ->
+      case method {
+        Get -> exercises_controller.index(ctx)
+        _ -> response.method_not_allowed([Get])
+      }
+
     ["weight_types"] ->
       case method {
         Get -> weight_type_controller.index(ctx)

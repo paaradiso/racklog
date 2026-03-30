@@ -27,9 +27,9 @@ pub fn render(
   <> runtime.render_attributes(attributes)
   <> ">"
   <> slot_meta_title
-  <> "</title>\n  </head>\n  <body class=\"antialiased\">\n    <header\n      class=\"bg-background/80 border-muted z-10 flex h-16 w-full items-center justify-center border-b shadow-md backdrop-blur-sm\"\n    >\n      <div class=\"container flex items-center justify-between\">\n        <a href=\"/\" class=\"text-foreground text-2xl font-bold\">racklog</a>\n        <nav class=\"hidden items-center gap-2 md:flex\">\n          <a href=\"/login\">Login</a>\n          <a href=\"/signup\">Register</a>\n        </nav>\n      </div>\n    </header>\n\n    "
+  <> "</title>\n  </head>\n  <body class=\"antialiased\">\n    <header\n      class=\"bg-background/80 border-muted z-10 flex h-16 w-full items-center justify-center border-b shadow-md backdrop-blur-sm\"\n    >\n      <div class=\"container flex items-center justify-between\">\n        <nav class=\"flex items-center gap-4\">\n          <a href=\"/\" class=\"text-foreground text-2xl font-bold mr-4\"\n            >racklog</a>\n          <a href=\"/input\">Input</a>\n          <a href=\"/exercises\">Exercises</a>\n        </nav>\n\n        <nav class=\"hidden items-center gap-4 md:flex\">\n          <a href=\"/\">Placeholder</a>\n          <a href=\"/\">Placeholder</a>\n        </nav>\n      </div>\n    </header>\n\n    <main class=\"flex justify-center items-center\">\n      "
   <> slot
-  <> "\n\n    "
+  <> "\n    </main>\n\n    "
   <> case slot_footer != "" {
     True -> {
       ""
