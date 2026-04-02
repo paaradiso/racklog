@@ -1,0 +1,10 @@
+---
+import database/main/models/workout/gen/workout.{type ListForUserWorkout}
+import database/main/models/user/gen/user.{type User}
+
+props(user: User, workouts: List(ListForUserWorkout))
+---
+
+<x-layouts:app>
+  <span>{{ user.id }}</span>
+</x-layouts:app>

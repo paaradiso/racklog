@@ -510,6 +510,135 @@ pub fn create_or_fail_wc(
   |> db.expect
 }
 
+pub type ListForUserWorkout {
+  ListForUserWorkout(
+    id: Int,
+    user_id: Int,
+    exercise_id: Int,
+    exercise_name: String,
+    weight_type_id: Int,
+    weight_type_name: String,
+    weight: Int,
+    reps: Int,
+    notes: String,
+    created_at: Int,
+    updated_at: Int,
+  )
+}
+
+fn list_for_user_workout_row_decoder() -> decode.Decoder(ListForUserWorkout) {
+  use id <- decode.field(0, decode.int)
+  use user_id <- decode.field(1, decode.int)
+  use exercise_id <- decode.field(2, decode.int)
+  use exercise_name <- decode.field(3, decode.string)
+  use weight_type_id <- decode.field(4, decode.int)
+  use weight_type_name <- decode.field(5, decode.string)
+  use weight <- decode.field(6, decode.int)
+  use reps <- decode.field(7, decode.int)
+  use notes <- decode.field(8, decode.string)
+  use created_at <- decode.field(9, decode.int)
+  use updated_at <- decode.field(10, decode.int)
+  decode.success(ListForUserWorkout(
+    id,
+    user_id,
+    exercise_id,
+    exercise_name,
+    weight_type_id,
+    weight_type_name,
+    weight,
+    reps,
+    notes,
+    created_at,
+    updated_at,
+  ))
+}
+
+pub fn list_for_user_workout_encoder() -> fn(ListForUserWorkout) -> json.Json {
+  fn(model: ListForUserWorkout) {
+    json.object([
+      #("id", json.int(model.id)),
+      #("user_id", json.int(model.user_id)),
+      #("exercise_id", json.int(model.exercise_id)),
+      #("exercise_name", json.string(model.exercise_name)),
+      #("weight_type_id", json.int(model.weight_type_id)),
+      #("weight_type_name", json.string(model.weight_type_name)),
+      #("weight", json.int(model.weight)),
+      #("reps", json.int(model.reps)),
+      #("notes", json.string(model.notes)),
+      #("created_at", json.int(model.created_at)),
+      #("updated_at", json.int(model.updated_at)),
+    ])
+  }
+}
+
+pub fn list_for_user_workout_decoder() -> decode.Decoder(ListForUserWorkout) {
+  use id <- decode.field("id", decode.int)
+  use user_id <- decode.field("user_id", decode.int)
+  use exercise_id <- decode.field("exercise_id", decode.int)
+  use exercise_name <- decode.field("exercise_name", decode.string)
+  use weight_type_id <- decode.field("weight_type_id", decode.int)
+  use weight_type_name <- decode.field("weight_type_name", decode.string)
+  use weight <- decode.field("weight", decode.int)
+  use reps <- decode.field("reps", decode.int)
+  use notes <- decode.field("notes", decode.string)
+  use created_at <- decode.field("created_at", decode.int)
+  use updated_at <- decode.field("updated_at", decode.int)
+  decode.success(ListForUserWorkout(
+    id,
+    user_id,
+    exercise_id,
+    exercise_name,
+    weight_type_id,
+    weight_type_name,
+    weight,
+    reps,
+    notes,
+    created_at,
+    updated_at,
+  ))
+}
+
+pub fn list_for_user(
+  pool pool: db.DbPool,
+  user_id user_id: Int,
+) -> Result(List(ListForUserWorkout), db.DbError) {
+  use connection <- db.get_connection(pool)
+  list_for_user_wc(connection: connection, user_id: user_id)
+}
+
+pub fn list_for_user_wc(
+  connection connection: db.Connection,
+  user_id user_id: Int,
+) -> Result(List(ListForUserWorkout), db.DbError) {
+  case
+    db.query_with(
+      connection,
+      "SELECT w.id, w.user_id, w.exercise_id, e.name AS exercise_name, w.weight_type_id, wt.name AS weight_type_name, w.weight, w.reps, w.notes, w.created_at, w.updated_at FROM workouts w JOIN exercises e ON w.exercise_id = e.id JOIN weight_types wt ON w.weight_type_id = wt.id WHERE w.user_id = $1 ORDER BY w.created_at DESC;",
+      [db.int(user_id)],
+      list_for_user_workout_row_decoder(),
+    )
+  {
+    Ok(db.QueryResult(_, rows)) -> Ok(rows)
+    Error(e) -> Error(e)
+  }
+}
+
+pub fn list_for_user_or_fail(
+  pool pool: db.DbPool,
+  user_id user_id: Int,
+) -> List(ListForUserWorkout) {
+  use connection <- db.get_connection(pool)
+  list_for_user_or_fail_wc(connection: connection, user_id: user_id)
+}
+
+pub fn list_for_user_or_fail_wc(
+  connection connection: db.Connection,
+  user_id user_id: Int,
+) -> List(ListForUserWorkout) {
+  list_for_user_wc(connection: connection, user_id: user_id)
+  |> db.expect
+}
+
 pub type UpdateWorkout {
   UpdateWorkout(
     id: Int,

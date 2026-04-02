@@ -1,4 +1,5 @@
 import app/app.{type App}
+import compiled/loom/index
 import glimr/http/context.{type Context}
 import glimr/http/http.{type Response}
 import glimr/response/response
@@ -9,5 +10,5 @@ import glimr/response/response
 
 /// @get "/"
 pub fn index(_ctx: Context(App)) -> Response {
-  response.empty(200)
+  response.html(index.render(), 200)
 }

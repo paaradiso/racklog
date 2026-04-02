@@ -15,6 +15,7 @@ import app/http/controllers/dashboard_controller
 import app/http/controllers/exercises_controller
 import app/http/controllers/index_controller
 import app/http/controllers/weight_type_controller
+import app/http/controllers/workouts_controller
 import gleam/http.{Get, Post}
 import glimr/http/middleware
 import glimr/response/response
@@ -80,6 +81,12 @@ pub fn routes(path, method, ctx) {
     ["weight_types"] ->
       case method {
         Get -> weight_type_controller.index(ctx)
+        _ -> response.method_not_allowed([Get])
+      }
+
+    ["workouts"] ->
+      case method {
+        Get -> workouts_controller.index(ctx)
         _ -> response.method_not_allowed([Get])
       }
 

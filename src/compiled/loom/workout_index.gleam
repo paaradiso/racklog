@@ -7,19 +7,21 @@
 ////
 
 import compiled/loom/components/layouts/app as components_layouts_app
+import database/main/models/user/gen/user.{type User}
+import database/main/models/workout/gen/workout.{type ListForUserWorkout}
 import glimr/loom/runtime
 
-pub fn render() -> String {
+pub fn render(
+  user user: User,
+  workouts workouts: List(ListForUserWorkout),
+) -> String {
   ""
   <> components_layouts_app.render(
     slot_footer: "",
     slot_footer_scripts: "",
     slot_head: "",
     slot_meta_title: "",
-    slot: {
-      ""
-      <> "\n  <div class=\"container flex justify-center items-center\"></div>\n"
-    },
+    slot: { "" <> "\n  <span>" <> runtime.display(user.id) <> "</span>\n" },
     attributes: [],
   )
   <> "\n"
