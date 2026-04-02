@@ -6,6 +6,7 @@
 //// loom:compile`.
 ////
 
+import compiled/loom/components/button as components_button
 import glimr/loom/runtime
 import glimr/vite
 
@@ -18,18 +19,25 @@ pub fn render(
   attributes attributes: List(runtime.Attribute),
 ) -> String {
   ""
-  <> "\n<!doctype html>\n<html>\n  <head>\n    <meta charset=\"utf-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <link rel=\"icon\" type=\"image/svg+xml\" href=\"/static/images/favicon.svg\" />\n\n    <link\n      href=\"https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600\"\n      rel=\"stylesheet\"\n    />\n\n    "
+  <> "\n<!doctype html>\n<html>\n  <head>\n    <meta charset=\"utf-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <link rel=\"icon\" type=\"image/svg+xml\" href=\"/static/images/favicon.svg\" />\n    "
   <> vite.tags("src/resources/ts/app.ts")
-  <> "\n\n    <!-- header scripts and meta tags -->\n    "
+  <> "\n    "
   <> slot_head
-  <> "\n\n    <title "
+  <> "\n    <title "
   <> " "
   <> runtime.render_attributes(attributes)
   <> ">"
   <> slot_meta_title
-  <> "</title>\n  </head>\n  <body class=\"antialiased\">\n    <header\n      class=\"bg-background/80 border-muted z-10 flex h-16 w-full items-center justify-center border-b shadow-md backdrop-blur-sm\"\n    >\n      <div class=\"container flex items-center justify-between\">\n        <nav class=\"flex items-center gap-4\">\n          <a href=\"/\" class=\"text-foreground text-2xl font-bold mr-4\"\n            >racklog</a>\n          <a href=\"/input\">Input</a>\n          <a href=\"/exercises\">Exercises</a>\n        </nav>\n\n        <nav class=\"hidden items-center gap-4 md:flex\">\n          <a href=\"/\">Placeholder</a>\n          <a href=\"/\">Placeholder</a>\n        </nav>\n      </div>\n    </header>\n\n    <main class=\"flex justify-center items-center\">\n      "
+  <> "</title>\n  </head>\n  <body class=\"antialiased\">\n    <header\n      class=\"bg-card border-border z-10 flex h-16 w-full items-center justify-center border-b shadow-md backdrop-blur-sm\"\n    >\n      <div class=\"container flex items-center justify-between\">\n        <nav aria-label=\"Primary\" class=\"flex items-center gap-4\">\n          <a href=\"/\" class=\"text-foreground text-2xl font-bold mr-4\"\n            >racklog</a>\n          <a href=\"/input\">Input</a>\n          <a href=\"/exercises\">Exercises</a>\n        </nav>\n        <nav aria-label=\"Account\" class=\"items-center gap-4 flex\">\n          <a href=\"/login\">Log in</a>\n          "
+  <> components_button.render(
+    href: "/register",
+    variant: "",
+    slot: { "" <> "Register" },
+    attributes: [runtime.Attribute("href", "/register")],
+  )
+  <> "\n        </nav>\n      </div>\n    </header>\n    <main class=\"flex justify-center items-center\">\n      "
   <> slot
-  <> "\n    </main>\n\n    "
+  <> "\n    </main>\n    "
   <> case slot_footer != "" {
     True -> {
       ""

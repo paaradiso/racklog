@@ -8,48 +8,34 @@ import glimr/vite
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg" />
-
-    <link
-      href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600"
-      rel="stylesheet"
-    />
-
     {{{ vite.tags("src/resources/ts/app.ts") }}}
-
-    <!-- header scripts and meta tags -->
     <slot name="head" />
-
     <title><slot name="meta_title" /></title>
   </head>
   <body class="antialiased">
     <header
-      class="bg-background/80 border-muted z-10 flex h-16 w-full items-center justify-center border-b shadow-md backdrop-blur-sm"
+      class="bg-card border-border z-10 flex h-16 w-full items-center justify-center border-b shadow-md backdrop-blur-sm"
     >
       <div class="container flex items-center justify-between">
-        <nav class="flex items-center gap-4">
+        <nav aria-label="Primary" class="flex items-center gap-4">
           <a href="/" class="text-foreground text-2xl font-bold mr-4"
             >racklog</a
           >
           <a href="/input">Input</a>
           <a href="/exercises">Exercises</a>
         </nav>
-
-        <nav class="hidden items-center gap-4 md:flex">
-          <a href="/">Placeholder</a>
-          <a href="/">Placeholder</a>
+        <nav aria-label="Account" class="items-center gap-4 flex">
+          <a href="/login">Log in</a>
+          <x-button href="/register">Register</x-button>
         </nav>
       </div>
     </header>
-
     <main class="flex justify-center items-center">
       <slot />
     </main>
-
     <footer l-if="slot.footer">
       <slot name="footer" />
     </footer>
-
-    <!-- footer scripts -->
     <slot name="footer_scripts" />
   </body>
 </html>

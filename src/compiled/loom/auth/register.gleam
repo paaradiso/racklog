@@ -25,7 +25,7 @@ pub fn render(ctx ctx: context.Context(App)) -> String {
     slot: {
       ""
       <> "\n  "
-      <> "\n\n  <div class=\"flex items-center justify-center min-h-screen bg-mist-50\">\n    <div class=\"w-full max-w-md p-8 bg-white rounded-lg shadow-md\">\n      <h1 class=\"text-[22px] font-bold text-center text-mist-800 mb-6\">\n        Register now\n      </h1>\n\n      "
+      <> "\n  <div class=\"flex items-center justify-center min-h-screen\">\n    <div\n      class=\"flex flex-col gap-4 w-lg p-8 border border-border bg-card rounded-lg shadow-md\"\n    >\n      <h1 class=\"text-2xl font-semibold text-center\">Register now</h1>\n      "
       <> case session.has_flash(ctx.session, "error") {
         True -> {
           ""
@@ -34,7 +34,7 @@ pub fn render(ctx ctx: context.Context(App)) -> String {
           <> runtime.render_attributes([
             runtime.Attribute(
               "class",
-              "mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded",
+              "p-3 bg-destructive-background-subtle border border-destructive-border text-destructive rounded",
             ),
           ])
           <> ">"
@@ -45,7 +45,7 @@ pub fn render(ctx ctx: context.Context(App)) -> String {
         }
         False -> ""
       }
-      <> "\n\n      <form method=\"post\" action=\"/register\">\n        <div class=\"mb-4\">\n          "
+      <> "\n      <form method=\"post\" action=\"/register\" class=\"contents\">\n        "
       <> components_input.render(
         id: "email",
         name: "email",
@@ -56,10 +56,9 @@ pub fn render(ctx ctx: context.Context(App)) -> String {
           runtime.Attribute("name", "email"),
           runtime.Attribute("type", "email"),
           runtime.Attribute("label", "Email Address"),
-          runtime.Attribute("placeholder", "name@email.com"),
         ],
       )
-      <> "\n        </div>\n\n        <div class=\"mb-4\">\n          "
+      <> "\n        "
       <> components_input.render(
         id: "password",
         name: "password",
@@ -70,10 +69,9 @@ pub fn render(ctx ctx: context.Context(App)) -> String {
           runtime.Attribute("name", "password"),
           runtime.Attribute("type", "password"),
           runtime.Attribute("label", "Password"),
-          runtime.Attribute("placeholder", "super-secret-password"),
         ],
       )
-      <> "\n        </div>\n\n        <div class=\"mb-6\">\n          "
+      <> "\n        "
       <> components_input.render(
         id: "password_confirmation",
         name: "password_confirmation",
@@ -84,17 +82,16 @@ pub fn render(ctx ctx: context.Context(App)) -> String {
           runtime.Attribute("name", "password_confirmation"),
           runtime.Attribute("type", "password"),
           runtime.Attribute("label", "Confirm Password"),
-          runtime.Attribute("placeholder", "super-secret-password"),
         ],
       )
-      <> "\n        </div>\n\n        "
+      <> "\n        "
       <> components_button.render(
         variant: "",
         href: "",
         slot: { "" <> "Register" },
         attributes: [runtime.Attribute("type", "submit")],
       )
-      <> "\n      </form>\n\n      <p class=\"mt-4 text-center text-sm text-mist-500\">\n        Already have an account?\n        "
+      <> "\n      </form>\n      <p class=\"text-center text-sm text-muted-foreground\">\n        Already have an account?\n        "
       <> components_link.render(
         variant: "",
         slot: { "" <> "Login" },

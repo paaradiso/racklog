@@ -23,7 +23,8 @@ pub fn render(
         runtime.build_classes([
           runtime.class("font-medium"),
           runtime.class(case variant {
-            _ -> "text-mist-800 hover:text-mist-600"
+            _ ->
+              "text-secondary-foreground underline underline-offset-2 hover:text-muted-foreground"
           }),
         ]),
       ),

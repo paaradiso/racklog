@@ -22,14 +22,17 @@ pub fn render(
   <> " "
   <> runtime.render_attributes([
     runtime.Attribute("for", id),
-    runtime.Attribute("class", "block text-sm font-medium text-mist-800 mb-1"),
+    runtime.Attribute(
+      "class",
+      "block text-sm font-medium text-secondary-foreground mb-1",
+    ),
   ])
   <> ">"
   <> "\n    "
   <> runtime.display(label)
   <> "\n  "
   <> "</label>"
-  <> "\n\n  "
+  <> "\n  "
   <> "<input"
   <> " "
   <> runtime.render_attributes(runtime.merge_attributes(
@@ -37,20 +40,20 @@ pub fn render(
       runtime.Attribute("value", session.old(session, name)),
       runtime.Attribute(
         "class",
-        "w-full px-3 py-2 border border-mist-200 rounded-md focus:outline-none focus:ring-2 focus:ring-mist-500 focus:border-transparent placeholder:text-mist-400",
+        "w-full px-3 py-2 border border-input-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent placeholder:text-muted-foreground",
       ),
     ],
     attributes,
   ))
   <> " />"
-  <> "\n\n  "
+  <> "\n  "
   <> case session.has_error(session, name) {
     True -> {
       ""
       <> "<small"
       <> " "
       <> runtime.render_attributes([
-        runtime.Attribute("class", "mt-1 text-sm text-red-600"),
+        runtime.Attribute("class", "mt-1 text-sm text-destructive"),
       ])
       <> ">"
       <> "\n    "

@@ -16,7 +16,6 @@ pub fn render(
   attributes attributes: List(runtime.Attribute),
 ) -> String {
   ""
-  <> "\n<!-- if no href is present, then use a regular button-->\n"
   <> case string.is_empty(href) {
     True -> {
       ""
@@ -28,15 +27,14 @@ pub fn render(
             "class",
             runtime.build_classes([
               runtime.class(
-                "w-full py-2.5 px-4 font-medium rounded-lg cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2",
+                "flex items-center justify-center py-2.5 px-4 font-medium rounded-lg cursor-pointer transition-colors bg-foreground text-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
               ),
               runtime.class(case variant {
                 "secondary" ->
-                  "bg-mist-100 text-gray-700 hover:bg-mist-200 focus:ring-mist-400"
+                  "bg-secondary text-secondary-foreground hover:bg-secondary-hover"
                 "danger" ->
-                  "bg-red-500 text-white hover:bg-red-600 focus:ring-red-500"
-                _ ->
-                  "bg-mist-900 text-white hover:bg-mist-700 focus:ring-mist-500"
+                  "bg-destructive text-destructive-foreground hover:bg-destructive-background-hover focus:ring-destructive-ring"
+                _ -> ""
               }),
             ]),
           ),
@@ -60,15 +58,14 @@ pub fn render(
             "class",
             runtime.build_classes([
               runtime.class(
-                "w-full py-2.5 px-4 font-medium rounded-lg cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2",
+                "flex items-center justify-center py-2.5 px-4 font-medium rounded-lg cursor-pointer transition-colors bg-foreground text-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
               ),
               runtime.class(case variant {
                 "secondary" ->
-                  "bg-mist-100 text-gray-700 hover:bg-mist-200 focus:ring-mist-400"
+                  "bg-secondary text-secondary-foreground hover:bg-secondary-hover"
                 "danger" ->
-                  "bg-red-500 text-white hover:bg-red-600 focus:ring-red-500"
-                _ ->
-                  "bg-mist-900 text-white hover:bg-mist-700 focus:ring-mist-500"
+                  "bg-destructive text-destructive-foreground hover:bg-destructive-background-hover focus:ring-destructive-ring"
+                _ -> ""
               }),
             ]),
           ),
