@@ -28,7 +28,7 @@ pub fn render(
   <> runtime.render_attributes(attributes)
   <> ">"
   <> slot_meta_title
-  <> "</title>\n  </head>\n  <body class=\"antialiased\">\n    <header\n      class=\"bg-card border-border z-10 flex h-16 w-full items-center justify-center border-b shadow-md backdrop-blur-sm\"\n    >\n      <div class=\"container flex items-center justify-between\">\n        <nav aria-label=\"Primary\" class=\"flex items-center gap-4\">\n          <a href=\"/\" class=\"text-foreground text-2xl font-bold mr-4\"\n            >racklog</a>\n          <a href=\"/input\">Input</a>\n          <a href=\"/exercises\">Exercises</a>\n        </nav>\n        <nav aria-label=\"Account\" class=\"items-center gap-4 flex\">\n          <a href=\"/login\">Log in</a>\n          "
+  <> "</title>\n  </head>\n  <body class=\"antialiased\">\n    <header\n      class=\"bg-card border-border z-10 flex h-16 w-full items-center justify-center border-b shadow-md backdrop-blur-sm\"\n    >\n      <div class=\"container flex items-center justify-between\">\n        <nav aria-label=\"Primary\" class=\"flex items-center gap-4\">\n          <a href=\"/\" class=\"text-foreground text-2xl font-bold mr-4\"\n            >racklog</a>\n          <a href=\"/input\">Input</a>\n          <a href=\"/workouts\">Workouts</a>\n          <a href=\"/exercises\">Exercises</a>\n        </nav>\n        <nav aria-label=\"Account\" class=\"items-center gap-4 flex\">\n          <a href=\"/login\">Log in</a>\n          "
   <> components_button.render(
     href: "/register",
     variant: "",
