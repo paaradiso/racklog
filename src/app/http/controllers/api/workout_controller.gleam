@@ -35,6 +35,7 @@ pub fn store(ctx: Context(App)) -> Response {
 
   workout.create_or_fail(
     ctx.app.db,
+    validated.user_id,
     validated.exercise_id,
     validated.weight_type_id,
     validated.weight,
@@ -53,6 +54,7 @@ pub fn update(ctx: Context(App), id: String) -> Response {
 
   workout.update_or_fail(
     ctx.app.db,
+    validated.user_id |> option.unwrap(existing.user_id),
     validated.exercise_id |> option.unwrap(existing.exercise_id),
     validated.weight_type_id |> option.unwrap(existing.weight_type_id),
     validated.weight |> option.unwrap(existing.weight),

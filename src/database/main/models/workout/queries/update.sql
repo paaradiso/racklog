@@ -1,14 +1,16 @@
 UPDATE workouts
 SET 
   updated_at = unixepoch(), 
-  exercise_id = $1, 
-  weight_type_id = $2, 
-  weight = $3, 
-  reps = $4, 
-  notes = $5
-WHERE id = $6
+  user_id = $1,
+  exercise_id = $2, 
+  weight_type_id = $3, 
+  weight = $4, 
+  reps = $5, 
+  notes = $6
+WHERE id = $7
 RETURNING 
   id, 
+  user_id,
   exercise_id,
   (SELECT name FROM exercises WHERE id = workouts.exercise_id) AS exercise_name,
   weight_type_id,

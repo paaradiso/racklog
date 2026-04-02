@@ -37,6 +37,7 @@
     "workouts": {
       "columns": [
         {"name": "id", "type": "Id", "nullable": false, "has_default": false},
+        {"name": "user_id", "type": "Foreign(users)", "nullable": false, "has_default": false},
         {"name": "exercise_id", "type": "Foreign(exercises)", "nullable": false, "has_default": false},
         {"name": "weight_type_id", "type": "Foreign(weight_types)", "nullable": false, "has_default": false},
         {"name": "weight", "type": "Int", "nullable": false, "has_default": false},

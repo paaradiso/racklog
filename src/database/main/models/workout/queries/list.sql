@@ -1,5 +1,6 @@
 SELECT 
   w.id, 
+  w.user_id,
   w.exercise_id,
   e.name AS exercise_name,
   w.weight_type_id,

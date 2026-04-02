@@ -11,6 +11,7 @@ import glimr/response/redirect
 ///
 pub type Data {
   Data(
+    user_id: Int,
     exercise_id: Int,
     weight_type_id: Int,
     weight: Int,
@@ -23,6 +24,7 @@ pub type Data {
 ///
 fn rules(_ctx: Context(App)) -> List(Rule(Context(App))) {
   [
+    validator.for("user_id", [validator.Required, validator.Numeric]),
     validator.for("exercise_id", [validator.Required, validator.Numeric]),
     validator.for("weight_type_id", [validator.Required, validator.Numeric]),
     validator.for("weight", [validator.Required, validator.Numeric]),
@@ -36,12 +38,14 @@ fn rules(_ctx: Context(App)) -> List(Rule(Context(App))) {
 /// reaches your controller.
 ///
 fn data(data: FormData) -> Data {
+  let assert Ok(user_id) = data.get("user_id") |> int.parse
   let assert Ok(exercise_id) = data.get("exercise_id") |> int.parse
   let assert Ok(weight_type_id) = data.get("weight_type_id") |> int.parse
   let assert Ok(weight) = data.get("weight") |> int.parse
   let assert Ok(reps) = data.get("reps") |> int.parse
 
   Data(
+    user_id: user_id,
     exercise_id: exercise_id,
     weight_type_id: weight_type_id,
     weight: weight,

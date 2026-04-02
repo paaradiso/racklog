@@ -12,6 +12,7 @@ import glimr/response/redirect
 ///
 pub type Data {
   Data(
+    user_id: Option(Int),
     exercise_id: Option(Int),
     weight_type_id: Option(Int),
     weight: Option(Int),
@@ -24,6 +25,7 @@ pub type Data {
 ///
 fn rules(_ctx: Context(App)) -> List(Rule(Context(App))) {
   [
+    validator.for("user_id", [validator.Numeric]),
     validator.for("exercise_id", [validator.Numeric]),
     validator.for("weight_type_id", [validator.Numeric]),
     validator.for("weight", [validator.Numeric]),
@@ -38,6 +40,7 @@ fn rules(_ctx: Context(App)) -> List(Rule(Context(App))) {
 ///
 fn data(data: FormData) -> Data {
   Data(
+    user_id: data.get("user_id") |> int.parse |> option.from_result,
     exercise_id: data.get("exercise_id") |> int.parse |> option.from_result,
     weight_type_id: data.get("weight_type_id")
       |> int.parse
