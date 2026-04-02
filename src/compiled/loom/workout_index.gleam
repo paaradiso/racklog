@@ -9,6 +9,7 @@
 import compiled/loom/components/layouts/app as components_layouts_app
 import database/main/models/user/gen/user.{type User}
 import database/main/models/workout/gen/workout.{type ListForUserWorkout}
+import gleam/option
 import glimr/loom/runtime
 
 pub fn render(
@@ -17,6 +18,7 @@ pub fn render(
 ) -> String {
   ""
   <> components_layouts_app.render(
+    user: option.Some(user),
     slot_footer: "",
     slot_footer_scripts: "",
     slot_head: "",

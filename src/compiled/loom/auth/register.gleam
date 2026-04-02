@@ -11,6 +11,7 @@ import compiled/loom/components/button as components_button
 import compiled/loom/components/input as components_input
 import compiled/loom/components/layouts/app as components_layouts_app
 import compiled/loom/components/link as components_link
+import gleam/option
 import glimr/http/context
 import glimr/loom/runtime
 import glimr/session/session
@@ -18,6 +19,7 @@ import glimr/session/session
 pub fn render(ctx ctx: context.Context(App)) -> String {
   ""
   <> components_layouts_app.render(
+    user: option.None,
     slot_meta_title: { "" <> "Register" },
     slot_footer: "",
     slot_footer_scripts: "",

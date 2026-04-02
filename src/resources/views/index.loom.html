@@ -1,3 +1,10 @@
-<x-layouts:app>
+---
+import database/main/models/user/gen/user.{type User}
+import gleam/option.{type Option}
+
+props(user: Option(User))
+---
+
+<x-layouts:app :user="user">
   <div class="container flex justify-center items-center"></div>
 </x-layouts:app>

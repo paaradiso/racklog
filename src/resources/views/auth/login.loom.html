@@ -5,7 +5,7 @@ import app/app.{type App}
 props(ctx: context.Context(App))
 ---
 
-<x-layouts:app>
+<x-layouts:app :user="ctx.app.user">
   <slot name="meta_title">Login</slot>
   <div class="flex items-center justify-center min-h-screen">
     <div

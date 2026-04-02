@@ -10,6 +10,7 @@ import app/app.{type App}
 import compiled/loom/components/button as components_button
 import compiled/loom/components/layouts/app as components_layouts_app
 import database/main/models/user/gen/user
+import gleam/option
 import glimr/http/context
 import glimr/loom/runtime
 import glimr/session/session
@@ -17,6 +18,7 @@ import glimr/session/session
 pub fn render(ctx ctx: context.Context(App), user user: user.User) -> String {
   ""
   <> components_layouts_app.render(
+    user: option.Some(user),
     slot_meta_title: { "" <> "Dashboard" },
     slot_footer: "",
     slot_footer_scripts: "",
@@ -44,9 +46,9 @@ pub fn render(ctx ctx: context.Context(App), user user: user.User) -> String {
         }
         False -> ""
       }
-      <> "\n\n      <h1 class=\"text-2xl font-bold text-gray-900 mb-2\">Dashboard</h1>\n\n      <p class=\"text-gray-600 mb-6\">\n        Welcome, "
+      <> "\n\n      <h1 class=\"text-2xl font-bold text-gray-900 mb-2\">Dashboard</h1>\n\n      <p class=\"text-gray-600 mb-6\">Welcome, "
       <> runtime.display(user.email)
-      <> "\n      </p>\n\n      <form method=\"post\" action=\"/logout\">\n        "
+      <> "</p>\n\n      <form method=\"post\" action=\"/logout\">\n        "
       <> components_button.render(
         variant: "secondary",
         href: "",

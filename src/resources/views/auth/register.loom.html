@@ -1,11 +1,13 @@
 ---
+import gleam/option
 import glimr/session/session
 import glimr/http/context
 import app/app.{type App}
+
 props(ctx: context.Context(App))
 ---
 
-<x-layouts:app>
+<x-layouts:app :user="option.None">
   <slot name="meta_title">Register</slot>
   <div class="flex items-center justify-center min-h-screen">
     <div

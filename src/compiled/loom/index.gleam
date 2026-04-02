@@ -7,11 +7,14 @@
 ////
 
 import compiled/loom/components/layouts/app as components_layouts_app
+import database/main/models/user/gen/user.{type User}
+import gleam/option.{type Option}
 import glimr/loom/runtime
 
-pub fn render() -> String {
+pub fn render(user user: Option(User)) -> String {
   ""
   <> components_layouts_app.render(
+    user: user,
     slot_footer: "",
     slot_footer_scripts: "",
     slot_head: "",

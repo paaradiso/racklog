@@ -18,6 +18,7 @@ import glimr/session/session
 pub fn render(ctx ctx: context.Context(App)) -> String {
   ""
   <> components_layouts_app.render(
+    user: ctx.app.user,
     slot_meta_title: { "" <> "Login" },
     slot_footer: "",
     slot_footer_scripts: "",

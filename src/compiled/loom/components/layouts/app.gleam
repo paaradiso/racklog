@@ -7,10 +7,14 @@
 ////
 
 import compiled/loom/components/button as components_button
+import compiled/loom/components/link as components_link
+import database/main/models/user/gen/user.{type User}
+import gleam/option
 import glimr/loom/runtime
 import glimr/vite
 
 pub fn render(
+  user user: option.Option(User),
   slot slot: String,
   slot_footer slot_footer: String,
   slot_footer_scripts slot_footer_scripts: String,
@@ -28,13 +32,40 @@ pub fn render(
   <> runtime.render_attributes(attributes)
   <> ">"
   <> slot_meta_title
-  <> "</title>\n  </head>\n  <body class=\"antialiased\">\n    <header\n      class=\"bg-card border-border z-10 flex h-16 w-full items-center justify-center border-b shadow-md backdrop-blur-sm\"\n    >\n      <div class=\"container flex items-center justify-between\">\n        <nav aria-label=\"Primary\" class=\"flex items-center gap-4\">\n          <a href=\"/\" class=\"text-foreground text-2xl font-bold mr-4\"\n            >racklog</a>\n          <a href=\"/input\">Input</a>\n          <a href=\"/workouts\">Workouts</a>\n          <a href=\"/exercises\">Exercises</a>\n        </nav>\n        <nav aria-label=\"Account\" class=\"items-center gap-4 flex\">\n          <a href=\"/login\">Log in</a>\n          "
-  <> components_button.render(
-    href: "/register",
-    variant: "",
-    slot: { "" <> "Register" },
-    attributes: [runtime.Attribute("href", "/register")],
-  )
+  <> "</title>\n  </head>\n  <body class=\"antialiased\">\n    <header\n      class=\"bg-card border-border z-10 flex h-16 w-full items-center justify-center border-b shadow-md backdrop-blur-sm\"\n    >\n      <div class=\"container flex items-center justify-between\">\n        <nav aria-label=\"Primary\" class=\"flex items-center gap-4\">\n          <a href=\"/\" class=\"text-foreground text-2xl font-bold mr-4\"\n            >racklog</a>\n          <a href=\"/input\">Input</a>\n          <a href=\"/workouts\">Workouts</a>\n          <a href=\"/exercises\">Exercises</a>\n        </nav>\n        <nav aria-label=\"Account\" class=\"items-center gap-4 flex\">\n          "
+  <> case option.is_some(user) {
+    True -> {
+      ""
+      <> "<div"
+      <> " "
+      <> runtime.render_attributes([runtime.Attribute("class", "contents")])
+      <> ">"
+      <> "\n            <form action=\"/logout\" method=\"POST\">\n              <button type=\"submit\" class=\"btn\">Log out</button>\n            </form>\n          "
+      <> "</div>"
+    }
+    False -> {
+      ""
+      <> "<div"
+      <> " "
+      <> runtime.render_attributes([runtime.Attribute("class", "contents")])
+      <> ">"
+      <> "\n            "
+      <> components_link.render(
+        variant: "",
+        slot: { "" <> "Log in" },
+        attributes: [runtime.Attribute("href", "/login")],
+      )
+      <> "\n            "
+      <> components_button.render(
+        href: "/register",
+        variant: "",
+        slot: { "" <> "Register" },
+        attributes: [runtime.Attribute("href", "/register")],
+      )
+      <> "\n          "
+      <> "</div>"
+    }
+  }
   <> "\n        </nav>\n      </div>\n    </header>\n    <main class=\"flex justify-center items-center\">\n      "
   <> slot
   <> "\n    </main>\n    "

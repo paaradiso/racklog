@@ -9,6 +9,6 @@ import glimr/response/response
 // docs: https://github.com/glimr-org/glimr?tab=readme-ov-file#redirects
 
 /// @get "/"
-pub fn index(_ctx: Context(App)) -> Response {
-  response.html(index.render(), 200)
+pub fn index(ctx: Context(App)) -> Response {
+  response.html(index.render(ctx.app.user), 200)
 }

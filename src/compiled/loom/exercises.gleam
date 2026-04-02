@@ -6,26 +6,14 @@
 //// loom:compile`.
 ////
 
-import compiled/loom/components/layouts/app as components_layouts_app
 import database/main/models/exercise/gen/exercise.{type Exercise}
 import glimr/loom/runtime
 
 pub fn render(exercises exercises: List(Exercise)) -> String {
   ""
-  <> components_layouts_app.render(
-    slot_footer: "",
-    slot_footer_scripts: "",
-    slot_head: "",
-    slot_meta_title: "",
-    slot: {
-      ""
-      <> "\n  <div class=\"container flex flex-col gap-2 justify-center items-center\">\n    "
-      |> runtime.append_each(exercises, fn(acc, exercise) {
-        acc <> "<div" <> ">" <> runtime.display(exercise.name) <> "</div>"
-      })
-      <> "\n  </div>\n"
-    },
-    attributes: [],
-  )
-  <> "\n"
+  <> "\n<!-- <x-layouts:app> -->\n<div class=\"container flex flex-col gap-2 justify-center items-center\">\n  "
+  |> runtime.append_each(exercises, fn(acc, exercise) {
+    acc <> "<div" <> ">" <> runtime.display(exercise.name) <> "</div>"
+  })
+  <> "\n</div>\n<!-- </x-layouts:app> -->\n"
 }

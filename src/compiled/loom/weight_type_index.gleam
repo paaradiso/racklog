@@ -6,36 +6,22 @@
 //// loom:compile`.
 ////
 
-import compiled/loom/components/layouts/app as components_layouts_app
 import database/main/models/weight_type/gen/weight_type.{type WeightType}
 import glimr/loom/runtime
 
 pub fn render(weight_types weight_types: List(WeightType)) -> String {
   ""
-  <> components_layouts_app.render(
-    slot_footer: "",
-    slot_footer_scripts: "",
-    slot_head: "",
-    slot_meta_title: "",
-    slot: {
-      ""
-      <> "\n  "
-      |> runtime.append_each(weight_types, fn(acc, weight_type) {
-        acc
-        <> "<div"
-        <> " "
-        <> runtime.render_attributes([
-          runtime.Attribute("class", "text-red-400"),
-        ])
-        <> ">"
-        <> "\n    "
-        <> runtime.display(weight_type.name)
-        <> "\n  "
-        <> "</div>"
-      })
-      <> "\n"
-    },
-    attributes: [],
-  )
-  <> "\n"
+  <> "\n<!-- <x-layouts:app> -->\n"
+  |> runtime.append_each(weight_types, fn(acc, weight_type) {
+    acc
+    <> "<div"
+    <> " "
+    <> runtime.render_attributes([runtime.Attribute("class", "text-red-400")])
+    <> ">"
+    <> "\n  "
+    <> runtime.display(weight_type.name)
+    <> "\n"
+    <> "</div>"
+  })
+  <> "\n<!-- </x-layouts:app> -->\n"
 }

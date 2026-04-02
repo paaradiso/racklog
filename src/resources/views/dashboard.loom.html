@@ -1,4 +1,5 @@
 ---
+import gleam/option
 import glimr/session/session
 import glimr/http/context
 import database/main/models/user/gen/user
@@ -7,7 +8,7 @@ import app/app.{type App}
 props(ctx: context.Context(App), user: user.User)
 ---
 
-<x-layouts:app>
+<x-layouts:app :user="option.Some(user)">
   <slot name="meta_title">Dashboard</slot>
 
   <div class="flex items-center justify-center min-h-screen bg-gray-50">
@@ -21,9 +22,7 @@ props(ctx: context.Context(App), user: user.User)
 
       <h1 class="text-2xl font-bold text-gray-900 mb-2">Dashboard</h1>
 
-      <p class="text-gray-600 mb-6">
-        Welcome, {{ user.email }}
-      </p>
+      <p class="text-gray-600 mb-6">Welcome, {{ user.email }}</p>
 
       <form method="post" action="/logout">
         <x-button type="submit" variant="secondary">Logout</x-button>

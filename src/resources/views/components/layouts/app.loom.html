@@ -1,5 +1,9 @@
 ---
+import database/main/models/user/gen/user.{type User}
+import gleam/option
 import glimr/vite
+
+props(user: option.Option(User))
 ---
 
 <!doctype html>
@@ -26,8 +30,16 @@ import glimr/vite
           <a href="/exercises">Exercises</a>
         </nav>
         <nav aria-label="Account" class="items-center gap-4 flex">
-          <x-link href="/login">Log in</x-link>
-          <x-button href="/register">Register</x-button>
+          <div l-if="option.is_some(user)" class="contents">
+            <form action="/logout" method="POST">
+              <button type="submit" class="btn">Log out</button>
+            </form>
+          </div>
+
+          <div l-else class="contents">
+            <x-link href="/login">Log in</x-link>
+            <x-button href="/register">Register</x-button>
+          </div>
         </nav>
       </div>
     </header>
