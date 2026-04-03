@@ -32,7 +32,23 @@ pub fn render(
   <> runtime.render_attributes(attributes)
   <> ">"
   <> slot_meta_title
-  <> "</title>\n  </head>\n  <body class=\"antialiased\">\n    <header\n      class=\"bg-card border-border z-10 flex h-16 w-full items-center justify-center border-b shadow-md backdrop-blur-sm\"\n    >\n      <div class=\"container flex items-center justify-between\">\n        <nav aria-label=\"Primary\" class=\"flex items-center gap-4\">\n          <a href=\"/\" class=\"text-foreground text-2xl font-bold mr-4\"\n            >racklog</a>\n          <a href=\"/input\">Input</a>\n          <a href=\"/workouts\">Workouts</a>\n          <a href=\"/exercises\">Exercises</a>\n        </nav>\n        <nav aria-label=\"Account\" class=\"items-center gap-4 flex\">\n          "
+  <> "</title>\n  </head>\n  <body class=\"antialiased\">\n    <header\n      class=\"bg-card border-border z-10 flex h-16 w-full items-center justify-center border-b shadow-md backdrop-blur-sm mb-4\"\n    >\n      <div class=\"container flex items-center justify-between\">\n        <nav aria-label=\"Primary\" class=\"flex items-center gap-4\">\n          <a href=\"/\" class=\"text-foreground text-2xl font-bold mr-4\"\n            >racklog</a>\n          "
+  <> components_link.render(variant: "", slot: { "" <> "Input" }, attributes: [
+    runtime.Attribute("href", "/input"),
+  ])
+  <> "\n          "
+  <> components_link.render(
+    variant: "",
+    slot: { "" <> "Workouts" },
+    attributes: [runtime.Attribute("href", "/workouts")],
+  )
+  <> "\n          "
+  <> components_link.render(
+    variant: "",
+    slot: { "" <> "Exercises" },
+    attributes: [runtime.Attribute("href", "/exercises")],
+  )
+  <> "\n        </nav>\n        <nav aria-label=\"Account\" class=\"items-center gap-4 flex\">\n          "
   <> case option.is_some(user) {
     True -> {
       ""
@@ -66,7 +82,7 @@ pub fn render(
       <> "</div>"
     }
   }
-  <> "\n        </nav>\n      </div>\n    </header>\n    <main class=\"flex justify-center items-center\">\n      "
+  <> "\n        </nav>\n      </div>\n    </header>\n    <main class=\"justify-center items-center w-full flex-1\">\n      "
   <> slot
   <> "\n    </main>\n    "
   <> case slot_footer != "" {

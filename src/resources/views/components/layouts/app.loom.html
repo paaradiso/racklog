@@ -18,16 +18,16 @@ props(user: option.Option(User))
   </head>
   <body class="antialiased">
     <header
-      class="bg-card border-border z-10 flex h-16 w-full items-center justify-center border-b shadow-md backdrop-blur-sm"
+      class="bg-card border-border z-10 flex h-16 w-full items-center justify-center border-b shadow-md backdrop-blur-sm mb-4"
     >
       <div class="container flex items-center justify-between">
         <nav aria-label="Primary" class="flex items-center gap-4">
           <a href="/" class="text-foreground text-2xl font-bold mr-4"
             >racklog</a
           >
-          <a href="/input">Input</a>
-          <a href="/workouts">Workouts</a>
-          <a href="/exercises">Exercises</a>
+          <x-link href="/input">Input</x-link>
+          <x-link href="/workouts">Workouts</x-link>
+          <x-link href="/exercises">Exercises</x-link>
         </nav>
         <nav aria-label="Account" class="items-center gap-4 flex">
           <div l-if="option.is_some(user)" class="contents">
@@ -35,7 +35,6 @@ props(user: option.Option(User))
               <button type="submit" class="btn">Log out</button>
             </form>
           </div>
-
           <div l-else class="contents">
             <x-link href="/login">Log in</x-link>
             <x-button href="/register">Register</x-button>
@@ -43,7 +42,7 @@ props(user: option.Option(User))
         </nav>
       </div>
     </header>
-    <main class="flex justify-center items-center">
+    <main class="justify-center items-center w-full flex-1">
       <slot />
     </main>
     <footer l-if="slot.footer">

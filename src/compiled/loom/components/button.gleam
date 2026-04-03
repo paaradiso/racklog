@@ -27,7 +27,7 @@ pub fn render(
             "class",
             runtime.build_classes([
               runtime.class(
-                "flex items-center justify-center py-2.5 px-4 font-medium rounded-lg cursor-pointer transition-colors bg-foreground text-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                "flex items-center justify-center py-2.5 px-4 font-medium rounded-lg cursor-pointer transition-colors bg-foreground hover:bg-foreground/90 text-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
               ),
               runtime.class(case variant {
                 "secondary" ->
@@ -58,7 +58,7 @@ pub fn render(
             "class",
             runtime.build_classes([
               runtime.class(
-                "flex items-center justify-center py-2.5 px-4 font-medium rounded-lg cursor-pointer transition-colors bg-foreground text-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                "flex items-center justify-center py-2.5 px-4 font-medium rounded-lg cursor-pointer transition-colors bg-foreground hover:bg-foreground/90 text-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
               ),
               runtime.class(case variant {
                 "secondary" ->

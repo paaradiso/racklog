@@ -1,0 +1,52 @@
+---
+import gleam/option
+import glimr/session/session
+import glimr/http/context
+import database/main/models/user/gen/user
+import app/app.{type App}
+
+props(ctx: context.Context(App), user: user.User, users: List(user.User))
+---
+
+<script
+  defer
+  src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+/>
+
+<x-layouts:app :user="option.Some(user)">
+  <slot name="meta_title">Admin Dashboard</slot>
+
+  <div
+    x-data="{ activeTab: 'users' }"
+    class="flex flex-col gap-2 items-center justify-center w-full"
+  >
+    <nav class="flex gap-2 border-b border-border pb-2 w-full grow container">
+      <x-link
+        @click="activeTab = 'users'"
+        x-bind:class="activeTab === 'users' && 'font-semibold'"
+        >Users</x-link
+      >
+      <x-link
+        @click="activeTab = 'settings'"
+        x-bind:class="activeTab === 'settings' && 'font-semibold'"
+        >Settings</x-link
+      >
+    </nav>
+
+    <div class="container">
+      <div x-show="activeTab === 'users'" class="flex flex-col gap-2 w-full">
+        <x-card:root
+          l-for="user_in_list in users"
+          class="w-full flex items-center justify-between"
+        >
+          <span>{{ user_in_list.email }}</span>
+          <span>icons</span>
+        </x-card:root>
+      </div>
+
+      <div x-show="activeTab === 'settings'" style="display: none">
+        <p>settings panel</p>
+      </div>
+    </div>
+  </div>
+</x-layouts:app>

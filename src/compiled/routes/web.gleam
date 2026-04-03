@@ -8,10 +8,10 @@
 //// https://github.com/glimr-org/glimr?tab=readme-ov-file#direct-pattern-matching
 ////
 
+import app/http/controllers/admin_controller
 import app/http/controllers/auth/login_controller as auth_login_controller
 import app/http/controllers/auth/logout_controller as auth_logout_controller
 import app/http/controllers/auth/register_controller as auth_register_controller
-import app/http/controllers/dashboard_controller
 import app/http/controllers/exercises_controller
 import app/http/controllers/index_controller
 import app/http/controllers/weight_type_controller
@@ -28,9 +28,9 @@ pub fn routes(path, method, ctx) {
         _ -> response.method_not_allowed([Get])
       }
 
-    ["dashboard"] ->
+    ["admin"] ->
       case method {
-        Get -> dashboard_controller.show(ctx)
+        Get -> admin_controller.show(ctx)
         _ -> response.method_not_allowed([Get])
       }
 
