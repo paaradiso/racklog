@@ -1,4 +1,5 @@
 import gleam/string
+import glimr/session/session.{type Session}
 import lustre/attribute.{type Attribute}
 import lustre/element.{type Element}
 import lustre/element/html
@@ -52,4 +53,40 @@ pub fn link(
     ],
     children,
   )
+}
+
+pub fn form_input(
+  label label: String,
+  id id: String,
+  name name: String,
+  session session: Session,
+  attributes attributes: List(Attribute(msg)),
+) -> Element(msg) {
+  html.div([], [
+    html.label(
+      [
+        attribute.for(id),
+        attribute.class(
+          "block text-sm font-medium text-secondary-foreground mb-1",
+        ),
+      ],
+      [element.text(label)],
+    ),
+    html.input([
+      attribute.id(id),
+      attribute.name(name),
+      attribute.value(session.old(session, name)),
+      attribute.class(
+        "w-full px-3 py-2 border border-input-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent placeholder:text-muted-foreground",
+      ),
+      ..attributes
+    ]),
+    case session.has_error(session, name) {
+      True ->
+        html.small([attribute.class("mt-1 text-sm text-destructive")], [
+          element.text(session.error(session, name)),
+        ])
+      False -> element.none()
+    },
+  ])
 }

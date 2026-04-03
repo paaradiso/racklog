@@ -1,5 +1,6 @@
 import app/app.{type App}
 import app/http/middleware/guest_user
+import app/http/ui
 import app/http/validators/store_register
 import compiled/loom/auth/register
 import database/main/models/user/gen/user
@@ -10,6 +11,7 @@ import glimr/response/redirect
 import glimr/response/response
 import glimr/session/session
 import glimr/utils/unix_timestamp
+import resources/views/auth/register.{Model} as register_view
 
 /// Apply the guest middleware to the entire controller
 pub fn middleware() -> List(Middleware(App)) {
@@ -18,7 +20,9 @@ pub fn middleware() -> List(Middleware(App)) {
 
 /// @get "/register"
 pub fn show(ctx: Context(App)) -> Response {
-  response.html(register.render(ctx: ctx), 200)
+  ui.render(user: ctx.app.user, children: [
+    register_view.view(Model(session: ctx.session)),
+  ])
 }
 
 /// @post "/register"

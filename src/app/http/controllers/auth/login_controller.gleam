@@ -1,5 +1,6 @@
 import app/app.{type App}
 import app/http/middleware/guest_user
+import app/http/ui
 import app/http/validators/store_login
 import compiled/loom/auth/login
 import database/main/models/user/gen/user
@@ -9,6 +10,7 @@ import glimr/http/kernel.{type Middleware}
 import glimr/response/redirect
 import glimr/response/response
 import glimr/session/session
+import resources/views/auth/login.{Model} as login_view
 
 /// Apply the guest middleware to the entire controller
 pub fn middleware() -> List(Middleware(App)) {
@@ -17,7 +19,9 @@ pub fn middleware() -> List(Middleware(App)) {
 
 /// @get "/login"
 pub fn show(ctx: Context(App)) -> Response {
-  response.html(login.render(ctx: ctx), 200)
+  ui.render(user: ctx.app.user, children: [
+    login_view.view(Model(session: ctx.session)),
+  ])
 }
 
 /// @post "/login"

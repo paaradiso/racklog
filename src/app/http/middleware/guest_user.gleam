@@ -6,7 +6,7 @@ import glimr/http/kernel.{type Next}
 import glimr/response/redirect
 
 /// Where to redirect authenticated users.
-pub const auth_redirect = "/dashboard"
+pub const auth_redirect = "/admin"
 
 pub fn run(ctx: Context(App), next: Next(App)) -> Response {
   case ctx.app.user {
