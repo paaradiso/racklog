@@ -25,7 +25,7 @@ pub fn button(
 
   let all_attributes = [
     attribute.class(
-      "flex items-center justify-center py-2.5 px-4 font-medium rounded-lg cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+      "flex items-center justify-center py-2 px-4 font-medium rounded-lg cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
     ),
     attribute.class(variant_styles),
     ..attributes
