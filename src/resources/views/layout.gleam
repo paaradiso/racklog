@@ -1,10 +1,8 @@
 import database/main/models/user/gen/user.{type User}
 import gleam/option
-import lustre/attribute.{action, class, content, href, method, name, rel, type_}
-import lustre/element.{type Element, fragment, text, unsafe_raw_html}
-import lustre/element/html.{
-  a, body, div, footer, form, head, header, html, link, main, meta, nav, title,
-}
+import lustre/attribute
+import lustre/element.{type Element}
+import lustre/element/html
 import resources/views/components/components.{ButtonPrimary}
 
 pub type Model {
@@ -12,94 +10,112 @@ pub type Model {
 }
 
 pub fn view(model: Model, children: List(Element(Nil))) -> Element(Nil) {
-  html([], [
-    head([], [
-      meta([attribute.attribute("charset", "utf-8")]),
-      meta([name("viewport"), content("width=device-width, initial-scale=1")]),
-      link([
-        rel("icon"),
-        type_("image/svg+xml"),
-        href("/static/images/favicon.svg"),
+  html.html([], [
+    html.head([], [
+      html.meta([attribute.attribute("charset", "utf-8")]),
+      html.meta([
+        attribute.name("viewport"),
+        attribute.content("width=device-width, initial-scale=1"),
       ]),
-      title([], "racklog"),
-      text("VITE_TAGS"),
+      html.link([
+        attribute.rel("icon"),
+        attribute.type_("image/svg+xml"),
+        attribute.href("/static/images/favicon.svg"),
+      ]),
+      html.title([], "racklog"),
+      element.text("VITE_TAGS"),
     ]),
 
-    body([class("antialiased")], [
+    html.body([attribute.class("antialiased")], [
       render_header(model),
-      main([class("justify-center items-center w-full flex-1")], children),
+      html.main(
+        [attribute.class("justify-center items-center w-full flex-1")],
+        children,
+      ),
     ]),
   ])
 }
 
 fn render_header(model: Model) -> Element(Nil) {
-  header(
+  html.header(
     [
-      class(
+      attribute.class(
         "bg-card border-border z-10 flex h-16 w-full items-center justify-center border-b shadow-md backdrop-blur-sm mb-4",
       ),
     ],
     [
-      div([class("container flex items-center justify-between")], [
-        nav(
-          [
-            attribute.attribute("aria-label", "Primary"),
-            class("flex items-center gap-4"),
-          ],
-          [
-            a([href("/"), class("text-foreground text-2xl font-bold mr-4")], [
-              text("racklog"),
-            ]),
+      html.div(
+        [attribute.class("container flex items-center justify-between")],
+        [
+          html.nav(
+            [
+              attribute.attribute("aria-label", "Primary"),
+              attribute.class("flex items-center gap-4"),
+            ],
+            [
+              html.a(
+                [
+                  attribute.href("/"),
+                  attribute.class("text-foreground text-2xl font-bold mr-4"),
+                ],
+                [
+                  element.text("racklog"),
+                ],
+              ),
 
-            components.link(href: "/input", attributes: [], children: [
-              text("Input"),
-            ]),
-            components.link(href: "/workouts", attributes: [], children: [
-              text("Workouts"),
-            ]),
-            components.link(href: "/exercises", attributes: [], children: [
-              text("Exercises"),
-            ]),
-          ],
-        ),
+              components.link(href: "/input", attributes: [], children: [
+                element.text("Input"),
+              ]),
+              components.link(href: "/workouts", attributes: [], children: [
+                element.text("Workouts"),
+              ]),
+              components.link(href: "/exercises", attributes: [], children: [
+                element.text("Exercises"),
+              ]),
+            ],
+          ),
 
-        nav(
-          [
-            attribute.attribute("aria-label", "Account"),
-            class("items-center gap-4 flex"),
-          ],
-          [
-            case model.user {
-              option.Some(_) ->
-                form([action("/logout"), method("POST")], [
-                  components.button(
-                    variant: ButtonPrimary,
-                    href: "",
-                    attributes: [type_("submit")],
-                    children: [
-                      text("Log out"),
+          html.nav(
+            [
+              attribute.attribute("aria-label", "Account"),
+              attribute.class("items-center gap-4 flex"),
+            ],
+            [
+              case model.user {
+                option.Some(_) ->
+                  html.form(
+                    [attribute.action("/logout"), attribute.method("POST")],
+                    [
+                      components.button(
+                        variant: ButtonPrimary,
+                        href: "",
+                        attributes: [attribute.type_("submit")],
+                        children: [
+                          element.text("Log out"),
+                        ],
+                      ),
                     ],
-                  ),
-                ])
+                  )
 
-              option.None ->
-                fragment([
-                  components.link(href: "/login", attributes: [], children: [
-                    text("Log In"),
-                  ]),
-                  components.button(
-                    variant: ButtonPrimary,
-                    href: "/register",
-                    attributes: [],
-                    children: [
-                      text("Register"),
-                    ],
-                  ),
-                ])
-            },
-          ],
-        ),
-      ]),
+                option.None ->
+                  element.fragment([
+                    components.link(href: "/login", attributes: [], children: [
+                      element.text("Log In"),
+                    ]),
+                    components.button(
+                      variant: ButtonPrimary,
+                      href: "/register",
+                      attributes: [],
+                      children: [
+                        element.text("Register"),
+                      ],
+                    ),
+                  ])
+              },
+            ],
+          ),
+        ],
+      ),
     ],
   )
 }
