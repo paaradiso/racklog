@@ -12,10 +12,7 @@ import app/http/controllers/admin_controller
 import app/http/controllers/auth/login_controller as auth_login_controller
 import app/http/controllers/auth/logout_controller as auth_logout_controller
 import app/http/controllers/auth/register_controller as auth_register_controller
-import app/http/controllers/exercises_controller
 import app/http/controllers/index_controller
-import app/http/controllers/weight_type_controller
-import app/http/controllers/workouts_controller
 import gleam/http.{Get, Post}
 import glimr/http/middleware
 import glimr/response/response
@@ -34,9 +31,9 @@ pub fn routes(path, method, ctx) {
         _ -> response.method_not_allowed([Get])
       }
 
-    ["exercises"] ->
+    ["admin_lustre"] ->
       case method {
-        Get -> exercises_controller.index(ctx)
+        Get -> admin_controller.show_lustre(ctx)
         _ -> response.method_not_allowed([Get])
       }
 
@@ -76,24 +73,6 @@ pub fn routes(path, method, ctx) {
           auth_register_controller.store(ctx)
         }
         _ -> response.method_not_allowed([Get, Post])
-      }
-
-    ["weight_types"] ->
-      case method {
-        Get -> weight_type_controller.index(ctx)
-        _ -> response.method_not_allowed([Get])
-      }
-
-    ["workouts"] ->
-      case method {
-        Get -> workouts_controller.index(ctx)
-        _ -> response.method_not_allowed([Get])
-      }
-
-    ["weight_types", id] ->
-      case method {
-        Get -> weight_type_controller.show(ctx, id)
-        _ -> response.method_not_allowed([Get])
       }
 
     _ -> response.not_found()

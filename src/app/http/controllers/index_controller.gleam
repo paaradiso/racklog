@@ -1,8 +1,12 @@
 import app/app.{type App}
+import app/http/ui
 import compiled/loom/index
+import gleam/option
 import glimr/http/context.{type Context}
 import glimr/http/http.{type Response}
 import glimr/response/response
+import lustre/element
+import resources/views/layout
 
 // docs: https://github.com/glimr-org/glimr?tab=readme-ov-file#creating-controllers
 // docs: https://github.com/glimr-org/glimr?tab=readme-ov-file#views--responses
@@ -10,5 +14,5 @@ import glimr/response/response
 
 /// @get "/"
 pub fn index(ctx: Context(App)) -> Response {
-  response.html(index.render(ctx.app.user), 200)
+  ui.render(user: ctx.app.user, children: [])
 }
