@@ -90,3 +90,18 @@ pub fn form_input(
     },
   ])
 }
+
+pub fn card_root(
+  attributes attributes: List(Attribute(msg)),
+  children children: List(Element(msg)),
+) -> Element(msg) {
+  html.div(
+    [
+      attribute.class(
+        "rounded-lg border border-border bg-card text-card-foreground shadow-sm p-6",
+      ),
+      ..attributes
+    ],
+    children,
+  )
+}
