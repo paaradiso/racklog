@@ -21,13 +21,11 @@ pub type Msg {
   GotResponse(Result(response.Response(String), rsvp.Error))
 }
 
-pub const base_model = Model(email: "", password: "", error: "")
-
 pub fn init() -> #(Model, Effect(Msg)) {
-  #(base_model, effect.none())
+  #(Model(email: "", password: "", error: ""), effect.none())
 }
 
-pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
+pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
     UpdatedEmail(email) -> #(Model(..model, email:), effect.none())
     UpdatedPassword(password) -> #(Model(..model, password:), effect.none())

@@ -9,8 +9,6 @@ pub type Model {
   Model(names: List(String))
 }
 
-pub const base_model = Model(names: [])
-
 pub type Msg {
   FetchedWeightTypes(Result(List(String), rsvp.Error))
 }
@@ -24,7 +22,7 @@ pub fn init() -> #(Model, Effect(Msg)) {
   #(Model(names: []), effect)
 }
 
-pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
+pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
     FetchedWeightTypes(Ok(names)) -> #(Model(names: names), effect.none())
     FetchedWeightTypes(Error(_)) -> #(model, effect.none())

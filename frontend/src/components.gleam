@@ -37,13 +37,11 @@ pub fn button(
 }
 
 pub fn link(
-  href href: String,
   attributes attributes: List(Attribute(msg)),
   children children: List(Element(msg)),
 ) -> Element(msg) {
   html.a(
     [
-      attribute.href(href),
       attribute.class(
         "text-secondary-foreground underline underline-offset-2 hover:text-muted-foreground transition-colors",
       ),

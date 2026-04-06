@@ -16,14 +16,21 @@ import route/login
 import route/weight_types
 import rsvp
 
-pub fn main() {
+pub fn main() -> Nil {
   let app = lustre.application(init, update, view)
   let assert Ok(_) = lustre.start(app, "#app", Nil)
   Nil
 }
 
-pub type User {
+type User {
   User(id: Int, email: String)
+}
+
+type Path {
+  IndexPath
+  WeightTypesPath
+  ExercisesPath
+  LoginPath
 }
 
 type Route {
@@ -65,13 +72,12 @@ fn uri_to_route(uri: Uri) -> #(Route, Effect(Msg)) {
   }
 }
 
-fn href(route: Route) -> Attribute(msg) {
-  let url = case route {
-    Index -> "/"
-    WeightTypes(_) -> "/weight_types"
-    Exercises(_) -> "/exercises"
-    Login(_) -> "/login"
-    NotFound(_) -> "/404"
+fn href(path: Path) -> Attribute(msg) {
+  let url = case path {
+    IndexPath -> "/"
+    WeightTypesPath -> "/weight_types"
+    ExercisesPath -> "/exercises"
+    LoginPath -> "/login"
   }
   attribute.href(url)
 }
@@ -97,7 +103,7 @@ fn decode_user() -> decode.Decoder(User) {
   decode.success(User(id:, email:))
 }
 
-fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
+fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
   case msg, model.route {
     GotCurrentUser(Ok(user)), _ -> #(
       Model(..model, user: Some(user)),
@@ -168,7 +174,7 @@ fn render_header(model: Model) -> Element(Msg) {
             [
               html.a(
                 [
-                  attribute.href("/"),
+                  href(IndexPath),
                   attribute.class("text-foreground text-2xl font-bold mr-4"),
                 ],
                 [
@@ -176,13 +182,10 @@ fn render_header(model: Model) -> Element(Msg) {
                 ],
               ),
 
-              components.link(href: "/input", attributes: [], children: [
-                element.text("Input"),
+              components.link(attributes: [href(WeightTypesPath)], children: [
+                element.text("Weight Types"),
               ]),
-              components.link(href: "/workouts", attributes: [], children: [
-                element.text("Workouts"),
-              ]),
-              components.link(href: "/exercises", attributes: [], children: [
+              components.link(attributes: [href(ExercisesPath)], children: [
                 element.text("Exercises"),
               ]),
             ],
@@ -201,7 +204,7 @@ fn render_header(model: Model) -> Element(Msg) {
                   ])
                 option.None ->
                   element.fragment([
-                    components.link(href: "/login", attributes: [], children: [
+                    components.link(attributes: [href(LoginPath)], children: [
                       element.text("Log In"),
                     ]),
                   ])
