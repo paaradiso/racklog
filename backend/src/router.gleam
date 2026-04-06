@@ -27,7 +27,7 @@ pub fn handle_request(req: Request, ctx: Context) -> Response {
 
     ["api", "weight_types"] ->
       case req.method {
-        Get -> weight_type.index(req)
+        Get -> weight_type.index(req, ctx)
         Post -> weight_type.store(req)
         _ -> wisp.method_not_allowed([Get, Post])
       }

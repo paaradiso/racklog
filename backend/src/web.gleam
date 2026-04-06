@@ -1,5 +1,5 @@
-import sqlight
+import pog
 
 pub type Context {
-  Context(db: sqlight.Connection)
+  Context(db: pog.Connection)
 }
