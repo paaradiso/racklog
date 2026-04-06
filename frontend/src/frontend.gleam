@@ -1,150 +1,229 @@
-// IMPORTS ---------------------------------------------------------------------
-
-import gleam/dict.{type Dict}
+import components.{ButtonPrimary}
+import gleam/dynamic/decode
 import gleam/int
+import gleam/io
 import gleam/list
+import gleam/option.{type Option, None, Some}
+import gleam/result
 import gleam/uri.{type Uri}
 import lustre
 import lustre/attribute.{type Attribute}
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
-
-// Modem is a package providing effects and functionality for routing in SPAs.
-// This means instead of links taking you to a new page and reloading everything,
-// they are intercepted and your `update` function gets told about the new URL.
 import modem
-
-// MAIN ------------------------------------------------------------------------
+import route/exercises
+import route/login
+import route/weight_types
+import rsvp
 
 pub fn main() {
   let app = lustre.application(init, update, view)
   let assert Ok(_) = lustre.start(app, "#app", Nil)
-
   Nil
 }
 
-// MODEL -----------------------------------------------------------------------
-
-type Model {
-  Model(route: Route)
+pub type User {
+  User(id: Int, email: String)
 }
 
-/// In a real application, we'll likely want to show different views depending on
-/// which URL we are on:
-///
-/// - /      - show the home page
-/// - /posts - show a list of posts
-/// - /about - show an about page
-/// - ...
-///
-/// We could store the `Uri` or perhaps the path as a `String` in our model, but
-/// this can be awkward to work with and error prone as our application grows.
-///
-/// Instead, we _parse_ the URL into a nice Gleam custom type with just the
-/// variants we need! This lets us benefit from Gleam's pattern matching,
-/// exhaustiveness checks, and LSP features, while also serving as documentation
-/// for our app: if you can get to a page, it must be in this type!
-///
 type Route {
   Index
-  About
-  /// It's good practice to store whatever `Uri` we failed to match in case we
-  /// want to log it or hint to the user that maybe they made a typo.
+  WeightTypes(weight_types.Model)
+  Exercises(exercises.Model)
+  Login(login.Model)
   NotFound(uri: Uri)
 }
 
-fn parse_route(uri: Uri) -> Route {
+type Model {
+  Model(route: Route, user: Option(User))
+}
+
+type Msg {
+  UserNavigatedTo(Uri)
+  GotCurrentUser(Result(User, rsvp.Error))
+  WeightTypesMsg(weight_types.Msg)
+  ExercisesMsg(exercises.Msg)
+  LoginMsg(login.Msg)
+}
+
+fn uri_to_route(uri: Uri) -> #(Route, Effect(Msg)) {
   case uri.path_segments(uri.path) {
-    [] | [""] -> Index
-
-    ["about"] -> About
-
-    _ -> NotFound(uri:)
+    [] | [""] -> #(Index, effect.none())
+    ["weight_types"] -> {
+      let #(model, effect) = weight_types.init()
+      #(WeightTypes(model), effect.map(effect, WeightTypesMsg))
+    }
+    ["exercises"] -> {
+      let #(model, effect) = exercises.init()
+      #(Exercises(model), effect.map(effect, ExercisesMsg))
+    }
+    ["login"] -> {
+      let #(model, effect) = login.init()
+      #(Login(model), effect.map(effect, LoginMsg))
+    }
+    _ -> #(NotFound(uri:), effect.none())
   }
 }
 
-/// We also need a way to turn a Route back into a an `href` attribute that we
-/// can then use on `html.a` elements. It is important to keep this function in
-/// sync with the parsing, but once you do, all links are guaranteed to work!
-///
 fn href(route: Route) -> Attribute(msg) {
   let url = case route {
     Index -> "/"
-    About -> "/about"
+    WeightTypes(_) -> "/weight_types"
+    Exercises(_) -> "/exercises"
+    Login(_) -> "/login"
     NotFound(_) -> "/404"
   }
-
   attribute.href(url)
 }
 
 fn init(_) -> #(Model, Effect(Msg)) {
-  // The server for a typical SPA will often serve the application to *any*
-  // HTTP request, and let the app itself determine what to show. Modem stores
-  // the first URL so we can parse it for the app's initial route.
-  let route = case modem.initial_uri() {
-    Ok(uri) -> parse_route(uri)
-    Error(_) -> Index
-  }
-
-  let model = Model(route:)
-
-  let effect =
-    // We need to initialise modem in order for it to intercept links. To do that
-    // we pass in a function that takes the `Uri` of the link that was clicked and
-    // turns it into a `Msg`.
-    modem.init(fn(uri) {
-      uri
-      |> parse_route
-      |> UserNavigatedTo
-    })
-
-  #(model, effect)
+  let uri = modem.initial_uri() |> result.unwrap(uri.empty)
+  let nav_effect = modem.init(UserNavigatedTo)
+  let #(route, route_effect) = uri_to_route(uri)
+  let user_effect = fetch_current_user()
+  #(
+    Model(route:, user: None),
+    effect.batch([nav_effect, route_effect, user_effect]),
+  )
 }
 
-// UPDATE ----------------------------------------------------------------------
+fn fetch_current_user() -> Effect(Msg) {
+  rsvp.get("/api/me", rsvp.expect_json(decode_user(), GotCurrentUser))
+}
 
-type Msg {
-  UserNavigatedTo(route: Route)
+fn decode_user() -> decode.Decoder(User) {
+  use id <- decode.field("id", decode.int)
+  use email <- decode.field("email", decode.string)
+  decode.success(User(id:, email:))
 }
 
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
+  echo model
   case msg {
-    UserNavigatedTo(route:) -> #(Model(..model, route:), effect.none())
+    GotCurrentUser(Ok(user)) -> #(
+      Model(..model, user: Some(user)),
+      effect.none(),
+    )
+    GotCurrentUser(Error(_)) -> #(Model(..model, user: None), effect.none())
+    UserNavigatedTo(uri) -> {
+      let #(route, fx) = uri_to_route(uri)
+      #(Model(..model, route:), effect.batch([fx, fetch_current_user()]))
+    }
+    WeightTypesMsg(sub_msg) -> {
+      case model.route {
+        WeightTypes(sub_model) -> {
+          let #(m, fx) = weight_types.update(sub_model, sub_msg)
+          #(
+            Model(..model, route: WeightTypes(m)),
+            effect.map(fx, WeightTypesMsg),
+          )
+        }
+        _ -> #(model, effect.none())
+      }
+    }
+    ExercisesMsg(sub_msg) -> {
+      case model.route {
+        Exercises(sub_model) -> {
+          let #(m, fx) = exercises.update(sub_model, sub_msg)
+          #(Model(..model, route: Exercises(m)), effect.map(fx, ExercisesMsg))
+        }
+        _ -> #(model, effect.none())
+      }
+    }
+    LoginMsg(sub_msg) -> {
+      case model.route {
+        Login(sub_model) -> {
+          let #(m, fx) = login.update(sub_model, sub_msg)
+          #(Model(..model, route: Login(m)), effect.map(fx, LoginMsg))
+        }
+        _ -> #(model, effect.none())
+      }
+    }
   }
 }
 
-// VIEW ------------------------------------------------------------------------
-
 fn view(model: Model) -> Element(Msg) {
-  html.div([attribute.class("mx-auto max-w-2xl px-32")], [
-    html.nav([attribute.class("flex justify-between items-center my-16")], [
-      html.h1([attribute.class("text-purple-600 font-medium text-xl")], [
-        html.a([href(Index)], [html.text("My little Blog")]),
-      ]),
-      html.ul([attribute.class("flex space-x-8")], []),
-    ]),
-    html.main([attribute.class("my-16")], {
-      // Just like we would show different HTML based on some other state in the
-      // model, we can also pattern match on our Route value to show different
-      // views based on the current page!
+  html.div([], [
+    render_header(model),
+    html.main(
+      [attribute.class("justify-center items-center w-full flex-1")],
       case model.route {
-        Index -> view_index()
-        About -> view_about()
-        NotFound(_) -> view_not_found()
-      }
-    }),
+        Index -> [html.text("index")]
+        WeightTypes(m) -> weight_types.view(m) |> list_map_msg(WeightTypesMsg)
+        Exercises(m) -> exercises.view(m) |> list_map_msg(ExercisesMsg)
+        Login(m) -> login.view(m) |> list_map_msg(LoginMsg)
+        NotFound(_) -> [html.text("not found")]
+      },
+    ),
   ])
 }
 
-fn view_index() -> List(Element(msg)) {
-  [element.text("index")]
+fn render_header(model: Model) -> Element(Msg) {
+  html.header(
+    [
+      attribute.class(
+        "bg-card border-border z-10 flex h-16 w-full items-center justify-center border-b shadow-md backdrop-blur-sm mb-4",
+      ),
+    ],
+    [
+      html.div(
+        [attribute.class("container flex items-center justify-between")],
+        [
+          html.nav(
+            [
+              attribute.attribute("aria-label", "Primary"),
+              attribute.class("flex items-center gap-4"),
+            ],
+            [
+              html.a(
+                [
+                  attribute.href("/"),
+                  attribute.class("text-foreground text-2xl font-bold mr-4"),
+                ],
+                [
+                  element.text("racklog"),
+                ],
+              ),
+
+              components.link(href: "/input", attributes: [], children: [
+                element.text("Input"),
+              ]),
+              components.link(href: "/workouts", attributes: [], children: [
+                element.text("Workouts"),
+              ]),
+              components.link(href: "/exercises", attributes: [], children: [
+                element.text("Exercises"),
+              ]),
+            ],
+          ),
+
+          html.nav(
+            [
+              attribute.attribute("aria-label", "Account"),
+              attribute.class("items-center gap-4 flex"),
+            ],
+            [
+              case model.user {
+                option.Some(user) ->
+                  html.span([], [
+                    element.text("User #" <> int.to_string(user.id)),
+                  ])
+                option.None ->
+                  element.fragment([
+                    components.link(href: "/login", attributes: [], children: [
+                      element.text("Log In"),
+                    ]),
+                  ])
+              },
+            ],
+          ),
+        ],
+      ),
+    ],
+  )
 }
 
-fn view_about() -> List(Element(msg)) {
-  [element.text("about")]
-}
-
-fn view_not_found() -> List(Element(msg)) {
-  [element.text("not found")]
+fn list_map_msg(elements, f) {
+  list.map(elements, element.map(_, f))
 }

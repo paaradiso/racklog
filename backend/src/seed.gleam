@@ -1,3 +1,5 @@
+import auth/auth
+import auth/sql as auth_sql
 import db
 import exercise/sql as exercise_sql
 import gleam/io
@@ -92,6 +94,18 @@ pub fn main() {
       Error(_) -> io.println("Error creating: " <> name)
     }
   })
+
+  io.println("Seeding user...")
+  case
+    auth_sql.register(
+      connection,
+      "test@example.com",
+      auth.hash_password("abc123abc"),
+    )
+  {
+    Ok(_) -> io.println("Created user")
+    Error(_) -> io.println("Error creating user")
+  }
 
   io.println("Seeding complete")
 }

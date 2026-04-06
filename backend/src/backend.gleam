@@ -1,5 +1,6 @@
 import db
 import gleam/erlang/process
+import gleam/option
 import mist
 import router
 import web
@@ -11,7 +12,7 @@ pub fn main() {
   let secret_key_base = wisp.random_string(64)
 
   let db = db.connect()
-  let context = web.Context(db:)
+  let context = web.Context(db:, user_id: option.None)
 
   let handler = router.handle_request(_, context)
   let assert Ok(_) =

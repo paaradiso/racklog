@@ -21,7 +21,7 @@ fn list_row_to_json(row: ListRow) -> json.Json {
   ])
 }
 
-pub fn index(_req: Request, ctx: Context) -> Response {
+pub fn list(_req: Request, ctx: Context) -> Response {
   case sql.list(ctx.db) {
     Ok(returned) ->
       returned.rows
@@ -33,20 +33,4 @@ pub fn index(_req: Request, ctx: Context) -> Response {
       wisp.internal_server_error()
     }
   }
-}
-
-pub fn store(_req: Request) -> Response {
-  wisp.json_response("{}", 201)
-}
-
-pub fn show(_req: Request, _id: String) -> Response {
-  wisp.json_response("{}", 200)
-}
-
-pub fn update(_req: Request, _id: String) -> Response {
-  wisp.json_response("{}", 200)
-}
-
-pub fn destroy(_req: Request, _id: String) -> Response {
-  wisp.response(204)
 }

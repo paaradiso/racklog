@@ -36,9 +36,10 @@ pub fn create(
     decode.success(CreateRow(id:, name:, created_at:, updated_at:))
   }
 
-  "INSERT INTO weight_type (name) 
-    VALUES ($1) 
-RETURNING *
+  "INSERT INTO weight_type (name)
+    VALUES ($1)
+RETURNING
+    *
 "
   |> pog.query
   |> pog.parameter(pog.text(arg_1))
@@ -74,10 +75,10 @@ pub fn list(
   }
 
   "SELECT
-    * 
-FROM 
+    *
+FROM
     weight_type
-ORDER BY 
+ORDER BY
     created_at DESC
 "
   |> pog.query
