@@ -29,7 +29,6 @@ pub fn list(_req: Request, ctx: Context) -> Response {
       |> json.to_string
       |> wisp.json_response(200)
     Error(err) -> {
-      wisp.log_error(string.inspect(err))
       wisp.internal_server_error()
     }
   }
