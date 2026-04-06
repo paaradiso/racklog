@@ -1,7 +1,6 @@
-import components.{ButtonPrimary}
+import components
 import gleam/dynamic/decode
 import gleam/int
-import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -51,16 +50,16 @@ fn uri_to_route(uri: Uri) -> #(Route, Effect(Msg)) {
   case uri.path_segments(uri.path) {
     [] | [""] -> #(Index, effect.none())
     ["weight_types"] -> {
-      let #(model, effect) = weight_types.init()
-      #(WeightTypes(model), effect.map(effect, WeightTypesMsg))
+      let #(model, fx) = weight_types.init()
+      #(WeightTypes(model), effect.map(fx, WeightTypesMsg))
     }
     ["exercises"] -> {
-      let #(model, effect) = exercises.init()
-      #(Exercises(model), effect.map(effect, ExercisesMsg))
+      let #(model, fx) = exercises.init()
+      #(Exercises(model), effect.map(fx, ExercisesMsg))
     }
     ["login"] -> {
-      let #(model, effect) = login.init()
-      #(Login(model), effect.map(effect, LoginMsg))
+      let #(model, fx) = login.init()
+      #(Login(model), effect.map(fx, LoginMsg))
     }
     _ -> #(NotFound(uri:), effect.none())
   }
@@ -99,7 +98,6 @@ fn decode_user() -> decode.Decoder(User) {
 }
 
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
-  echo model
   case msg {
     GotCurrentUser(Ok(user)) -> #(
       Model(..model, user: Some(user)),
@@ -110,35 +108,66 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       let #(route, fx) = uri_to_route(uri)
       #(Model(..model, route:), effect.batch([fx, fetch_current_user()]))
     }
-    WeightTypesMsg(sub_msg) -> {
-      case model.route {
-        WeightTypes(sub_model) -> {
-          let #(m, fx) = weight_types.update(sub_model, sub_msg)
-          #(
-            Model(..model, route: WeightTypes(m)),
-            effect.map(fx, WeightTypesMsg),
-          )
-        }
-        _ -> #(model, effect.none())
-      }
-    }
-    ExercisesMsg(sub_msg) -> {
-      case model.route {
-        Exercises(sub_model) -> {
-          let #(m, fx) = exercises.update(sub_model, sub_msg)
-          #(Model(..model, route: Exercises(m)), effect.map(fx, ExercisesMsg))
-        }
-        _ -> #(model, effect.none())
-      }
-    }
-    LoginMsg(sub_msg) -> {
-      case model.route {
-        Login(sub_model) -> {
-          let #(m, fx) = login.update(sub_model, sub_msg)
-          #(Model(..model, route: Login(m)), effect.map(fx, LoginMsg))
-        }
-        _ -> #(model, effect.none())
-      }
+    WeightTypesMsg(route_msg) ->
+      update_route(
+        model,
+        route_msg,
+        weight_types.update,
+        fn(route) {
+          case route {
+            WeightTypes(m) -> Some(m)
+            _ -> None
+          }
+        },
+        WeightTypes,
+        WeightTypesMsg,
+      )
+
+    ExercisesMsg(route_msg) ->
+      update_route(
+        model,
+        route_msg,
+        exercises.update,
+        fn(route) {
+          case route {
+            Exercises(m) -> Some(m)
+            _ -> None
+          }
+        },
+        Exercises,
+        ExercisesMsg,
+      )
+
+    LoginMsg(route_msg) ->
+      update_route(
+        model,
+        route_msg,
+        login.update,
+        fn(route) {
+          case route {
+            Login(m) -> Some(m)
+            _ -> None
+          }
+        },
+        Login,
+        LoginMsg,
+      )
+  }
+}
+
+fn update_route(
+  model: Model,
+  route_msg: msg,
+  route_update_fn: fn(model, msg) -> #(model, Effect(msg)),
+  extract: fn(Route) -> Option(model),
+  wrap_route: fn(model) -> Route,
+  route_msg_fn: fn(msg) -> Msg,
+) -> #(Model, Effect(Msg)) {
+  case extract(model.route) {
+    None -> #(model, effect.none())
+    Some(route_model) -> {
+      let #(m, fx) = route_update_fn(route_model, route_msg)
+      #(Model(..model, route: wrap_route(m)), effect.map(fx, route_msg_fn))
     }
   }
 }
@@ -150,13 +179,22 @@ fn view(model: Model) -> Element(Msg) {
       [attribute.class("justify-center items-center w-full flex-1")],
       case model.route {
         Index -> [html.text("index")]
-        WeightTypes(m) -> weight_types.view(m) |> list_map_msg(WeightTypesMsg)
-        Exercises(m) -> exercises.view(m) |> list_map_msg(ExercisesMsg)
-        Login(m) -> login.view(m) |> list_map_msg(LoginMsg)
+        WeightTypes(m) -> view_route(m, weight_types.view, WeightTypesMsg)
+        Exercises(m) -> view_route(m, exercises.view, ExercisesMsg)
+        Login(m) -> view_route(m, login.view, LoginMsg)
         NotFound(_) -> [html.text("not found")]
       },
     ),
   ])
+}
+
+fn view_route(
+  model: model,
+  route_view_fn: fn(model) -> List(Element(msg)),
+  route_msg_fn: fn(msg) -> Msg,
+) -> List(Element(Msg)) {
+  route_view_fn(model)
+  |> list.map(element.map(_, route_msg_fn))
 }
 
 fn render_header(model: Model) -> Element(Msg) {
@@ -222,8 +260,4 @@ fn render_header(model: Model) -> Element(Msg) {
       ),
     ],
   )
-}
-
-fn list_map_msg(elements, f) {
-  list.map(elements, element.map(_, f))
 }
