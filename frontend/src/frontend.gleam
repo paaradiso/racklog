@@ -98,77 +98,29 @@ fn decode_user() -> decode.Decoder(User) {
 }
 
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
-  case msg {
-    GotCurrentUser(Ok(user)) -> #(
+  case msg, model.route {
+    GotCurrentUser(Ok(user)), _ -> #(
       Model(..model, user: Some(user)),
       effect.none(),
     )
-    GotCurrentUser(Error(_)) -> #(Model(..model, user: None), effect.none())
-    UserNavigatedTo(uri) -> {
+    GotCurrentUser(Error(_)), _ -> #(Model(..model, user: None), effect.none())
+    UserNavigatedTo(uri), _ -> {
       let #(route, fx) = uri_to_route(uri)
       #(Model(..model, route:), effect.batch([fx, fetch_current_user()]))
     }
-    WeightTypesMsg(route_msg) ->
-      update_route(
-        model,
-        route_msg,
-        weight_types.update,
-        fn(route) {
-          case route {
-            WeightTypes(m) -> Some(m)
-            _ -> None
-          }
-        },
-        WeightTypes,
-        WeightTypesMsg,
-      )
-
-    ExercisesMsg(route_msg) ->
-      update_route(
-        model,
-        route_msg,
-        exercises.update,
-        fn(route) {
-          case route {
-            Exercises(m) -> Some(m)
-            _ -> None
-          }
-        },
-        Exercises,
-        ExercisesMsg,
-      )
-
-    LoginMsg(route_msg) ->
-      update_route(
-        model,
-        route_msg,
-        login.update,
-        fn(route) {
-          case route {
-            Login(m) -> Some(m)
-            _ -> None
-          }
-        },
-        Login,
-        LoginMsg,
-      )
-  }
-}
-
-fn update_route(
-  model: Model,
-  route_msg: msg,
-  route_update_fn: fn(model, msg) -> #(model, Effect(msg)),
-  extract: fn(Route) -> Option(model),
-  wrap_route: fn(model) -> Route,
-  route_msg_fn: fn(msg) -> Msg,
-) -> #(Model, Effect(Msg)) {
-  case extract(model.route) {
-    None -> #(model, effect.none())
-    Some(route_model) -> {
-      let #(m, fx) = route_update_fn(route_model, route_msg)
-      #(Model(..model, route: wrap_route(m)), effect.map(fx, route_msg_fn))
+    WeightTypesMsg(route_msg), WeightTypes(route_model) -> {
+      let #(m, fx) = weight_types.update(route_model, route_msg)
+      #(Model(..model, route: WeightTypes(m)), effect.map(fx, WeightTypesMsg))
     }
+    ExercisesMsg(route_msg), Exercises(route_model) -> {
+      let #(m, fx) = exercises.update(route_model, route_msg)
+      #(Model(..model, route: Exercises(m)), effect.map(fx, ExercisesMsg))
+    }
+    LoginMsg(route_msg), Login(route_model) -> {
+      let #(m, fx) = login.update(route_model, route_msg)
+      #(Model(..model, route: Login(m)), effect.map(fx, LoginMsg))
+    }
+    _, _ -> #(model, effect.none())
   }
 }
 
