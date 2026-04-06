@@ -25,6 +25,7 @@ gleam_time = ">= 1.8.0 and < 2.0.0"
 gleam_json = ">= 3.1.0 and < 4.0.0"
 argus = ">= 1.0.3 and < 2.0.0"
 youid = ">= 1.6.0 and < 2.0.0"
+dot_env = ">= 1.2.0 and < 2.0.0"
 
 [dev_dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
