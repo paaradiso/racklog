@@ -1,6 +1,7 @@
 import argus
-import auth/sql.{type ListUsersRow}
+import auth/sql.{type CreateUserRow, type ListUsersRow}
 import gleam/dynamic/decode
+import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option
@@ -30,6 +31,27 @@ fn list_users_row_to_json(row: ListUsersRow) -> json.Json {
   ])
 }
 
+fn create_user_row_to_json(row: CreateUserRow) -> json.Json {
+  json.object([
+    #("id", json.int(row.id)),
+    #("email", json.string(row.email)),
+    #(
+      "created_at",
+      json.string(timestamp.to_rfc3339(row.created_at, duration.seconds(0))),
+    ),
+    #(
+      "updated_at",
+      json.string(timestamp.to_rfc3339(row.updated_at, duration.seconds(0))),
+    ),
+  ])
+}
+
+fn user_credentials_decoder() -> decode.Decoder(#(String, String)) {
+  use email <- decode.field("email", decode.string)
+  use password <- decode.field("password", decode.string)
+  decode.success(#(email, password))
+}
+
 pub fn hash_password(password password: String) -> String {
   // https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html#argon2id
   let assert Ok(hashes) =
@@ -46,15 +68,9 @@ pub fn hash_password(password password: String) -> String {
 pub fn login(req: Request, ctx: Context) -> Response {
   use json <- wisp.require_json(req)
 
-  let decoder = {
-    use email <- decode.field("email", decode.string)
-    use password <- decode.field("password", decode.string)
-    decode.success(#(email, password))
-  }
-
   let auth_result = {
     use #(email, password) <- result.try(
-      decode.run(json, decoder)
+      decode.run(json, user_credentials_decoder())
       |> result.map_error(fn(_) { wisp.unprocessable_content() }),
     )
     use returned <- result.try(
@@ -94,6 +110,36 @@ pub fn login(req: Request, ctx: Context) -> Response {
   }
 }
 
+pub fn create_user(req: Request, ctx: Context) -> Response {
+  use json <- wisp.require_json(req)
+
+  let create_user_result = {
+    use #(email, password) <- result.try(
+      decode.run(json, user_credentials_decoder())
+      |> result.map_error(fn(_) { wisp.unprocessable_content() }),
+    )
+
+    let hashed_password = hash_password(password)
+
+    use returned <- result.try(
+      sql.create_user(ctx.db, email, hashed_password)
+      |> result.map_error(fn(_) { wisp.internal_server_error() }),
+    )
+
+    use user <- result.try(
+      list.first(returned.rows) |> result.map_error(fn(_) { wisp.not_found() }),
+    )
+
+    Ok(
+      create_user_row_to_json(user) |> json.to_string |> wisp.json_response(200),
+    )
+  }
+  case create_user_result {
+    Ok(user) -> user
+    Error(error) -> error
+  }
+}
+
 pub fn me(_req: Request, ctx: Context) -> Response {
   case ctx.user_id {
     option.None -> Error(wisp.response(401))
@@ -129,6 +175,18 @@ pub fn list_users(_req: Request, ctx: Context) -> Response {
       |> wisp.json_response(200)
     Error(_) -> {
       wisp.internal_server_error()
+    }
+  }
+}
+
+pub fn delete_user_by_id(_req: Request, ctx: Context, id: String) -> Response {
+  case int.parse(id) {
+    Error(_) -> wisp.bad_request("Invalid Id")
+    Ok(parsed_id) -> {
+      case sql.delete_user_by_id(ctx.db, parsed_id) {
+        Ok(_) -> wisp.no_content()
+        Error(_) -> wisp.internal_server_error()
+      }
     }
   }
 }

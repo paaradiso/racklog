@@ -97,7 +97,7 @@ pub fn main() {
 
   io.println("Seeding user...")
   case
-    auth_sql.register(
+    auth_sql.create_user(
       connection,
       "test@example.com",
       auth.hash_password("abc123abc"),
