@@ -199,6 +199,56 @@ WHERE
   |> pog.execute(db)
 }
 
+/// A row you get from running the `list_users` query
+/// defined in `./src/auth/sql/list_users.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type ListUsersRow {
+  ListUsersRow(
+    id: Int,
+    email: String,
+    hashed_password: String,
+    created_at: Timestamp,
+    updated_at: Timestamp,
+  )
+}
+
+/// Runs the `list_users` query
+/// defined in `./src/auth/sql/list_users.sql`.
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn list_users(
+  db: pog.Connection,
+) -> Result(pog.Returned(ListUsersRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use email <- decode.field(1, decode.string)
+    use hashed_password <- decode.field(2, decode.string)
+    use created_at <- decode.field(3, pog.timestamp_decoder())
+    use updated_at <- decode.field(4, pog.timestamp_decoder())
+    decode.success(ListUsersRow(
+      id:,
+      email:,
+      hashed_password:,
+      created_at:,
+      updated_at:,
+    ))
+  }
+
+  "SELECT 
+    * 
+FROM 
+    app_user;
+"
+  |> pog.query
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
 /// A row you get from running the `register` query
 /// defined in `./src/auth/sql/register.sql`.
 ///

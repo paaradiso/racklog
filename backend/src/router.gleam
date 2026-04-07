@@ -32,6 +32,9 @@ fn handle_authenticated(req: Request, ctx: Context) -> Response {
     Get, ["api", "me"] -> auth.me(req, ctx)
     _, ["api", "me"] -> wisp.method_not_allowed([Get])
 
+    Get, ["api", "users"] -> auth.list_users(req, ctx)
+    _, ["api", "users"] -> wisp.method_not_allowed([Get])
+
     _, _ -> wisp.not_found()
   }
 }

@@ -1,16 +1,33 @@
 import argus
-import auth/sql
+import auth/sql.{type ListUsersRow}
 import gleam/dynamic/decode
 import gleam/json
 import gleam/list
 import gleam/option
 import gleam/result
+import gleam/time/duration
+import gleam/time/timestamp
 import web.{type Context}
 import wisp.{type Request, type Response}
 import youid/uuid
 
 pub type User {
   User(email: String, password: String)
+}
+
+fn list_users_row_to_json(row: ListUsersRow) -> json.Json {
+  json.object([
+    #("id", json.int(row.id)),
+    #("email", json.string(row.email)),
+    #(
+      "created_at",
+      json.string(timestamp.to_rfc3339(row.created_at, duration.seconds(0))),
+    ),
+    #(
+      "updated_at",
+      json.string(timestamp.to_rfc3339(row.updated_at, duration.seconds(0))),
+    ),
+  ])
 }
 
 pub fn hash_password(password password: String) -> String {
@@ -79,23 +96,39 @@ pub fn login(req: Request, ctx: Context) -> Response {
 
 pub fn me(_req: Request, ctx: Context) -> Response {
   case ctx.user_id {
-    option.None -> wisp.response(401)
+    option.None -> Error(wisp.response(401))
     option.Some(user_id) -> {
-      case sql.get_current_user(ctx.db, user_id) {
-        Error(_) -> wisp.internal_server_error()
-        Ok(returned) -> {
-          case returned.rows {
-            [] -> wisp.response(401)
-            [user, ..] ->
-              json.object([
-                #("id", json.int(user.id)),
-                #("email", json.string(user.email)),
-              ])
-              |> json.to_string
-              |> wisp.json_response(200)
-          }
-        }
-      }
+      use returned <- result.try(
+        sql.get_current_user(ctx.db, user_id)
+        |> result.map_error(fn(_) { wisp.internal_server_error() }),
+      )
+      use user <- result.try(
+        returned.rows
+        |> list.first
+        |> result.map_error(fn(_) { wisp.response(401) }),
+      )
+      Ok(
+        json.object([
+          #("id", json.int(user.id)),
+          #("email", json.string(user.email)),
+        ])
+        |> json.to_string
+        |> wisp.json_response(200),
+      )
+    }
+  }
+  |> result.unwrap(wisp.response(401))
+}
+
+pub fn list_users(_req: Request, ctx: Context) -> Response {
+  case sql.list_users(ctx.db) {
+    Ok(returned) ->
+      returned.rows
+      |> json.array(list_users_row_to_json)
+      |> json.to_string
+      |> wisp.json_response(200)
+    Error(_) -> {
+      wisp.internal_server_error()
     }
   }
 }
