@@ -2,7 +2,6 @@ import auth/sql as auth_sql
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
-import gleam/string
 import web.{type Context, Context}
 import wisp.{type Request, type Response}
 

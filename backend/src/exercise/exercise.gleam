@@ -1,6 +1,5 @@
 import exercise/sql.{type ListRow}
 import gleam/json
-import gleam/string
 import gleam/time/duration
 import gleam/time/timestamp
 import web.{type Context}
@@ -28,7 +27,7 @@ pub fn list(_req: Request, ctx: Context) -> Response {
       |> json.array(list_row_to_json)
       |> json.to_string
       |> wisp.json_response(200)
-    Error(err) -> {
+    Error(_) -> {
       wisp.internal_server_error()
     }
   }
