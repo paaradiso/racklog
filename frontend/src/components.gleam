@@ -5,6 +5,7 @@ import lustre/element/html
 pub type ButtonVariant {
   ButtonPrimary
   ButtonSecondary
+  ButtonOutline
   ButtonDanger
 }
 
@@ -18,6 +19,8 @@ pub fn button(
     ButtonPrimary -> "bg-foreground hover:bg-foreground/90 text-background"
     ButtonSecondary ->
       "bg-secondary text-secondary-foreground hover:bg-secondary-hover"
+    ButtonOutline ->
+      "bg-transparent border border-button-outline-border hover:bg-foreground/10"
     ButtonDanger ->
       "bg-destructive text-destructive-foreground hover:bg-destructive-background-hover"
   }

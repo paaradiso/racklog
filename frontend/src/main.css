@@ -56,6 +56,7 @@ html {
   --border: var(--color-stone-200);
   --input-border: var(--color-stone-200);
   --ring: var(--color-stone-400);
+  --button-outline-border: var(--color-stone-400);
 }
 
 @theme {
@@ -91,4 +92,5 @@ html {
   --color-border: var(--border);
   --color-input-border: var(--input-border);
   --color-ring: var(--ring);
+  --color-button-outline-border: var(--button-outline-border);
 }
