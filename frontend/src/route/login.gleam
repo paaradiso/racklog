@@ -59,72 +59,69 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
 
 pub fn view(model: Model) -> List(Element(Msg)) {
   [
-    html.div(
-      [attribute.class("flex items-center justify-center min-h-screen")],
-      [
-        html.div(
-          [
-            attribute.class(
-              "flex flex-col gap-4 w-lg p-8 border border-border bg-card rounded-lg shadow-md",
-            ),
-          ],
-          [
-            html.h1([attribute.class("text-2xl font-semibold text-center")], [
-              element.text("Welcome back"),
-            ]),
-            case model.error {
-              "" -> element.none()
-              msg ->
-                html.div(
-                  [
-                    attribute.class(
-                      "p-2 text-sm bg-destructive-background-subtle border border-destructive-border text-destructive rounded",
-                    ),
-                  ],
-                  [element.text(msg)],
-                )
-            },
-            html.form(
-              [
-                attribute.class("contents"),
-                event.on_submit(fn(_) { SubmittedForm })
-                  |> event.prevent_default,
-              ],
-              [
-                components.form_input(
-                  label: "Email Address",
-                  id: "email",
-                  name: "email",
-                  attributes: [
-                    attribute.type_("email"),
-                    attribute.value(model.email),
-                    event.on_input(UpdatedEmail),
-                  ],
-                ),
-                components.form_input(
-                  label: "Password",
-                  id: "password",
-                  name: "password",
-                  attributes: [
-                    attribute.type_("password"),
-                    attribute.value(model.password),
-                    event.on_input(UpdatedPassword),
-                  ],
-                ),
-                components.button(
-                  variant: ButtonPrimary,
-                  href: "",
-                  attributes: [
-                    attribute.type_("submit"),
-                    attribute.class("btn-primary"),
-                  ],
-                  children: [element.text("Login")],
-                ),
-              ],
-            ),
-          ],
-        ),
-      ],
-    ),
+    html.div([attribute.class("flex items-center justify-center size-full")], [
+      html.div(
+        [
+          attribute.class(
+            "flex flex-col gap-4 w-lg p-8 border border-border bg-card rounded-lg shadow-md",
+          ),
+        ],
+        [
+          html.h1([attribute.class("text-2xl font-semibold text-center")], [
+            element.text("Welcome back"),
+          ]),
+          case model.error {
+            "" -> element.none()
+            msg ->
+              html.div(
+                [
+                  attribute.class(
+                    "p-2 text-sm bg-destructive-background-subtle border border-destructive-border text-destructive rounded",
+                  ),
+                ],
+                [element.text(msg)],
+              )
+          },
+          html.form(
+            [
+              attribute.class("contents"),
+              event.on_submit(fn(_) { SubmittedForm })
+                |> event.prevent_default,
+            ],
+            [
+              components.form_input(
+                label: "Email Address",
+                id: "email",
+                name: "email",
+                attributes: [
+                  attribute.type_("email"),
+                  attribute.value(model.email),
+                  event.on_input(UpdatedEmail),
+                ],
+              ),
+              components.form_input(
+                label: "Password",
+                id: "password",
+                name: "password",
+                attributes: [
+                  attribute.type_("password"),
+                  attribute.value(model.password),
+                  event.on_input(UpdatedPassword),
+                ],
+              ),
+              components.button(
+                variant: ButtonPrimary,
+                href: "",
+                attributes: [
+                  attribute.type_("submit"),
+                  attribute.class("btn-primary"),
+                ],
+                children: [element.text("Login")],
+              ),
+            ],
+          ),
+        ],
+      ),
+    ]),
   ]
 }

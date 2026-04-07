@@ -144,17 +144,27 @@ fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 fn view(model: Model) -> Element(Msg) {
-  html.div([], [
-    render_header(model),
-    html.div([attribute.class("w-full flex-1 z-40")], case model.route {
-      Index -> [html.text("index")]
-      WeightTypes(m) -> view_route(m, weight_types.view, WeightTypesMsg)
-      Exercises(m) -> view_route(m, exercises.view, ExercisesMsg)
-      Login(m) -> view_route(m, login.view, LoginMsg)
-      Admin(m) -> view_route(m, admin.view, AdminMsg)
-      NotFound(_) -> [html.text("not found")]
-    }),
-  ])
+  html.div(
+    [
+      attribute.class("h-screen flex flex-col w-full overflow-hidden"),
+    ],
+    [
+      render_header(model),
+      html.div(
+        [
+          attribute.class("w-full flex-1 flex z-40 min-h-0 overflow-hidden"),
+        ],
+        case model.route {
+          Index -> [html.text("index")]
+          WeightTypes(m) -> view_route(m, weight_types.view, WeightTypesMsg)
+          Exercises(m) -> view_route(m, exercises.view, ExercisesMsg)
+          Login(m) -> view_route(m, login.view, LoginMsg)
+          Admin(m) -> view_route(m, admin.view, AdminMsg)
+          NotFound(_) -> [html.text("not found")]
+        },
+      ),
+    ],
+  )
 }
 
 fn view_route(
@@ -170,7 +180,7 @@ fn render_header(model: Model) -> Element(Msg) {
   html.header(
     [
       attribute.class(
-        "relative bg-card border-border z-50 flex h-16 w-full items-center justify-center border-b shadow-md backdrop-blur-sm",
+        "shrink-0 relative bg-card border-border z-50 flex h-16 w-full items-center justify-center border-b shadow-md backdrop-blur-sm",
       ),
     ],
     [

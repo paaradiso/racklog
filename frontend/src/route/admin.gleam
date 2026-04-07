@@ -39,6 +39,7 @@ pub type Tab {
 
 pub type Dialog {
   AddUserDialog
+  EditUserDialog
   ConfirmDialog(message: String, on_confirm: Msg)
 }
 
@@ -46,13 +47,22 @@ pub type AddUserForm {
   AddUserForm(email: String, password: String, error: String)
 }
 
+pub type EditUserForm {
+  EditUserForm(id: Int, email: String, password: String, error: String)
+}
+
 fn default_add_user_form() -> AddUserForm {
   AddUserForm(email: "", password: "", error: "")
+}
+
+fn default_edit_user_form() -> EditUserForm {
+  EditUserForm(id: 0, email: "", password: "", error: "")
 }
 
 fn dialog_to_id(dialog: Dialog) -> String {
   case dialog {
     AddUserDialog -> "add_user"
+    EditUserDialog -> "edit_user"
     ConfirmDialog(_, _) -> "confirm"
   }
 }
@@ -62,6 +72,7 @@ pub type Model {
     active_tab: Tab,
     users: List(User),
     add_user_form: AddUserForm,
+    edit_user_form: EditUserForm,
     confirm_dialog: Option(Dialog),
   )
 }
@@ -70,6 +81,7 @@ pub type Msg {
   ClickedTab(Tab)
   FetchedUsers(Result(List(User), rsvp.Error))
   OpenedAddUserDialog
+  OpenedEditUserDialog(User)
   OpenedConfirmDialog(message: String, on_confirm: Msg)
   ClosedConfirmDialog
   ConfirmedDialog
@@ -79,6 +91,10 @@ pub type Msg {
   UpdatedAddUserPassword(String)
   SubmittedAddUser
   AddedUser(Result(User, rsvp.Error))
+  UpdatedEditUserEmail(String)
+  UpdatedEditUserPassword(String)
+  SubmittedEditUser
+  EditedUser(Result(User, rsvp.Error))
 }
 
 pub fn init() -> #(Model, Effect(Msg)) {
@@ -87,6 +103,7 @@ pub fn init() -> #(Model, Effect(Msg)) {
       active_tab: GeneralTab,
       users: [],
       add_user_form: default_add_user_form(),
+      edit_user_form: default_edit_user_form(),
       confirm_dialog: None,
     ),
     effect.none(),
@@ -108,6 +125,18 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
     FetchedUsers(Error(_)) -> #(model, effect.none())
     OpenedAddUserDialog -> #(
       Model(..model, add_user_form: default_add_user_form()),
+      effect.none(),
+    )
+    OpenedEditUserDialog(user) -> #(
+      Model(
+        ..model,
+        edit_user_form: EditUserForm(
+          id: user.id,
+          email: user.email,
+          password: "",
+          error: "",
+        ),
+      ),
       effect.none(),
     )
     OpenedConfirmDialog(message: message, on_confirm: on_confirm_msg) -> #(
@@ -163,7 +192,7 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
     SubmittedAddUser -> {
       let fx =
         rsvp.post(
-          "/api/create_user",
+          "/api/users",
           json.object([
             #("email", json.string(model.add_user_form.email)),
             #("password", json.string(model.add_user_form.password)),
@@ -186,6 +215,47 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
         AddUserForm(..model.add_user_form, error: "Failed to add user.")
       #(Model(..model, add_user_form: form), effect.none())
     }
+    UpdatedEditUserEmail(email) -> {
+      let form = EditUserForm(..model.edit_user_form, email:)
+      #(Model(..model, edit_user_form: form), effect.none())
+    }
+    UpdatedEditUserPassword(password) -> {
+      let form = EditUserForm(..model.edit_user_form, password:)
+      #(Model(..model, edit_user_form: form), effect.none())
+    }
+    SubmittedEditUser -> {
+      let payload_fields = [
+        #("email", json.string(model.edit_user_form.email)),
+      ]
+      let payload_fields = case model.edit_user_form.password {
+        "" -> payload_fields
+        pw -> [#("password", json.string(pw)), ..payload_fields]
+      }
+      let fx =
+        rsvp.patch(
+          "/api/users/" <> int.to_string(model.edit_user_form.id),
+          json.object(payload_fields),
+          rsvp.expect_json(user_decoder(), EditedUser),
+        )
+
+      #(model, fx)
+    }
+    EditedUser(Ok(user)) -> {
+      let users = list.filter(model.users, fn(u) { u.id != user.id })
+      #(
+        Model(
+          ..model,
+          users: [user, ..users],
+          edit_user_form: default_edit_user_form(),
+        ),
+        close_dialog(dialog_to_id(EditUserDialog)),
+      )
+    }
+    EditedUser(Error(e)) -> {
+      let form =
+        EditUserForm(..model.edit_user_form, error: "Failed to edit user.")
+      #(Model(..model, edit_user_form: form), effect.none())
+    }
   }
 }
 
@@ -193,7 +263,7 @@ pub fn view(model: Model) -> List(Element(Msg)) {
   [
     sidebar.sidebar_always(
       html.div,
-      [attribute.class("flex-1 flex flex-row overflow-hidden")],
+      [attribute.class("w-full h-full flex flex-row overflow-hidden")],
       [
         sidebar.aside([attribute.class("w-64 overflow-y-auto bg-card")], [
           sidebar.nav([attribute.class("flex flex-col text-md p-0")], [
@@ -205,7 +275,7 @@ pub fn view(model: Model) -> List(Element(Msg)) {
         html.main(
           [
             attribute.class(
-              "flex-1 overflow-y-auto p-4 bg-background text-foreground",
+              "container flex-1 overflow-y-auto p-4 bg-background text-foreground",
             ),
           ],
           [
@@ -230,7 +300,7 @@ fn view_sidebar_button(
       event.on_click(ClickedTab(target_tab)),
       attribute.classes([
         #(
-          "cursor-pointer hover:text-foreground/70  w-full h-14 flex items-center pl-4",
+          "cursor-pointer hover:text-foreground/70 w-full h-14 flex items-center pl-4",
           True,
         ),
         #("font-semibold bg-secondary", active_tab == target_tab),
@@ -245,55 +315,64 @@ fn view_general_tab(model: Model) -> Element(Msg) {
 }
 
 fn view_users_tab(model: Model) -> Element(Msg) {
-  html.div(
-    [attribute.class("flex flex-col gap-2")],
-    [
-      [
-        components.button(
-          variant: ButtonOutline,
-          href: "",
-          attributes: [
-            [attribute.class("w-min text-nowrap")],
-            dialog.open_for(dialog_to_id(AddUserDialog)),
-            [event.on_click(OpenedAddUserDialog)],
-          ]
-            |> list.flatten,
-          children: [element.text("Add User")],
-        ),
-        view_add_user_dialog(model),
-        view_confirm_dialog(model),
+  html.div([attribute.class("flex flex-col gap-2")], [
+    components.button(
+      variant: ButtonOutline,
+      href: "",
+      attributes: [
+        attribute.class("w-min text-nowrap"),
+        event.on_click(OpenedAddUserDialog),
+        ..dialog.open_for(dialog_to_id(AddUserDialog))
       ],
-      list.map(model.users, fn(user) {
-        components.card_root(
-          [attribute.class("flex justify-between items-center")],
-          [
-            html.span([], [element.text(user.email)]),
+      children: [element.text("Add User")],
+    ),
+    view_add_user_dialog(model),
+    view_edit_user_dialog(model),
+    view_confirm_dialog(model),
+    ..list.map(model.users, fn(user) {
+      components.card_root(
+        [attribute.class("flex justify-between items-center")],
+        [
+          html.span([], [element.text(user.email)]),
+          html.span([attribute.class("flex gap-2")], [
             components.button(
               variant: ButtonOutline,
               href: "",
               attributes: [
-                [
-                  attribute.class(
-                    "p-0! size-10 flex items-center justify-center",
-                  ),
-                  event.on_click(OpenedConfirmDialog(
-                    message: "This user will be permanently deleted.",
-                    on_confirm: DeleteUserRequestSent(user.id),
-                  )),
-                ],
-                dialog.open_for("confirm"),
-              ]
-                |> list.flatten,
+                attribute.class(
+                  "py-0! h-10 px-4! flex items-center justify-center",
+                ),
+                event.on_click(OpenedEditUserDialog(user)),
+                ..dialog.open_for(dialog_to_id(EditUserDialog))
+              ],
               children: [
-                lucide_lustre.trash_2([attribute.class("size-4")]),
+                lucide_lustre.pencil([attribute.class("size-4")]),
+                element.text("Edit"),
               ],
             ),
-          ],
-        )
-      }),
-    ]
-      |> list.flatten,
-  )
+            components.button(
+              variant: ButtonOutline,
+              href: "",
+              attributes: [
+                attribute.class(
+                  "py-0! h-10 px-4! flex items-center justify-center",
+                ),
+                event.on_click(OpenedConfirmDialog(
+                  message: "This user will be permanently deleted.",
+                  on_confirm: DeleteUserRequestSent(user.id),
+                )),
+                ..dialog.open_for("confirm")
+              ],
+              children: [
+                lucide_lustre.trash_2([attribute.class("size-4")]),
+                element.text("Delete"),
+              ],
+            ),
+          ]),
+        ],
+      )
+    })
+  ])
 }
 
 fn view_add_user_dialog(model: Model) -> Element(Msg) {
@@ -331,6 +410,7 @@ fn view_add_user_dialog(model: Model) -> Element(Msg) {
               name: "email",
               attributes: [
                 attribute.type_("email"),
+                attribute.value(model.add_user_form.email),
                 event.on_input(UpdatedAddUserEmail),
               ],
             ),
@@ -340,6 +420,7 @@ fn view_add_user_dialog(model: Model) -> Element(Msg) {
               name: "password",
               attributes: [
                 attribute.type_("password"),
+                attribute.value(model.add_user_form.password),
                 event.on_input(UpdatedAddUserPassword),
               ],
             ),
@@ -367,6 +448,79 @@ fn view_add_user_dialog(model: Model) -> Element(Msg) {
   )
 }
 
+fn view_edit_user_dialog(model: Model) -> Element(Msg) {
+  dialog.dialog(
+    [
+      dialog.id(dialog_to_id(EditUserDialog)),
+      attribute.class("rounded-lg"),
+    ],
+    [
+      dialog.header([], [dialog.title([], [html.text("Edit User")])]),
+      html.form(
+        [
+          attribute.id("edit_user_form"),
+          attribute.class(""),
+          event.on_submit(fn(_) { SubmittedEditUser })
+            |> event.prevent_default,
+        ],
+        [
+          html.div([attribute.class("flex flex-col gap-2")], [
+            case model.edit_user_form.error {
+              "" -> element.none()
+              msg ->
+                html.div(
+                  [
+                    attribute.class(
+                      "p-2 text-sm bg-destructive-background-subtle border border-destructive-border text-destructive rounded",
+                    ),
+                  ],
+                  [element.text(msg)],
+                )
+            },
+            components.form_input(
+              label: "Email Address",
+              id: "email",
+              name: "email",
+              attributes: [
+                attribute.type_("email"),
+                attribute.value(model.edit_user_form.email),
+                event.on_input(UpdatedEditUserEmail),
+              ],
+            ),
+            components.form_input(
+              label: "Password",
+              id: "password",
+              name: "password",
+              attributes: [
+                attribute.type_("password"),
+                attribute.value(model.edit_user_form.password),
+                event.on_input(UpdatedEditUserPassword),
+              ],
+            ),
+          ]),
+        ],
+      ),
+      dialog.footer([], [
+        components.button(
+          variant: ButtonSecondary,
+          href: "",
+          attributes: dialog.close_for(dialog_to_id(EditUserDialog)),
+          children: [html.text("Cancel")],
+        ),
+        components.button(
+          variant: ButtonPrimary,
+          href: "",
+          attributes: [
+            attribute.type_("submit"),
+            attribute.attribute("form", "edit_user_form"),
+          ],
+          children: [element.text("Submit")],
+        ),
+      ]),
+    ],
+  )
+}
+
 fn view_confirm_dialog(model: Model) -> Element(Msg) {
   let display_message = case model.confirm_dialog {
     Some(ConfirmDialog(message: msg, ..)) -> msg
@@ -384,7 +538,12 @@ fn view_confirm_dialog(model: Model) -> Element(Msg) {
         href: "",
         attributes: [
           event.on_click(ClosedConfirmDialog),
-          ..dialog.close_for("confirm")
+          ..dialog.close_for(
+            dialog_to_id(ConfirmDialog(
+              message: "",
+              on_confirm: DeleteUserRequestSent(0),
+            )),
+          )
         ],
         children: [html.text("Cancel")],
       ),
