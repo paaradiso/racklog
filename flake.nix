@@ -19,6 +19,7 @@
             erlang
             rebar3
             nodejs
+            deno
             prettierd
             tailwindcss_4
             bruno
