@@ -4,6 +4,7 @@ import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
 import rsvp
+import utils
 
 pub type Model {
   Model(names: List(String))
@@ -25,7 +26,7 @@ pub fn init() -> #(Model, Effect(Msg)) {
 pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
     FetchedExercises(Ok(names)) -> #(Model(names: names), effect.none())
-    FetchedExercises(Error(_)) -> #(model, effect.none())
+    FetchedExercises(Error(error)) -> #(model, utils.handle_unauthorised(error))
   }
 }
 

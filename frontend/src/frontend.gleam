@@ -11,6 +11,7 @@ import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
 import modem
+import route/admin
 import route/exercises
 import route/login
 import route/weight_types
@@ -31,6 +32,7 @@ type Path {
   WeightTypesPath
   ExercisesPath
   LoginPath
+  AdminPath
 }
 
 type Route {
@@ -38,6 +40,7 @@ type Route {
   WeightTypes(weight_types.Model)
   Exercises(exercises.Model)
   Login(login.Model)
+  Admin(admin.Model)
   NotFound(uri: Uri)
 }
 
@@ -51,6 +54,7 @@ type Msg {
   WeightTypesMsg(weight_types.Msg)
   ExercisesMsg(exercises.Msg)
   LoginMsg(login.Msg)
+  AdminMsg(admin.Msg)
 }
 
 fn uri_to_route(uri: Uri) -> #(Route, Effect(Msg)) {
@@ -68,6 +72,10 @@ fn uri_to_route(uri: Uri) -> #(Route, Effect(Msg)) {
       let #(model, fx) = login.init()
       #(Login(model), effect.map(fx, LoginMsg))
     }
+    ["admin"] -> {
+      let #(model, fx) = admin.init()
+      #(Admin(model), effect.map(fx, AdminMsg))
+    }
     _ -> #(NotFound(uri:), effect.none())
   }
 }
@@ -78,6 +86,7 @@ fn href(path: Path) -> Attribute(msg) {
     WeightTypesPath -> "/weight_types"
     ExercisesPath -> "/exercises"
     LoginPath -> "/login"
+    AdminPath -> "/admin"
   }
   attribute.href(url)
 }
@@ -126,6 +135,10 @@ fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
       let #(m, fx) = login.update(route_model, route_msg)
       #(Model(..model, route: Login(m)), effect.map(fx, LoginMsg))
     }
+    AdminMsg(route_msg), Admin(route_model) -> {
+      let #(m, fx) = admin.update(route_model, route_msg)
+      #(Model(..model, route: Admin(m)), effect.map(fx, AdminMsg))
+    }
     _, _ -> #(model, effect.none())
   }
 }
@@ -133,16 +146,14 @@ fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
 fn view(model: Model) -> Element(Msg) {
   html.div([], [
     render_header(model),
-    html.main(
-      [attribute.class("justify-center items-center w-full flex-1")],
-      case model.route {
-        Index -> [html.text("index")]
-        WeightTypes(m) -> view_route(m, weight_types.view, WeightTypesMsg)
-        Exercises(m) -> view_route(m, exercises.view, ExercisesMsg)
-        Login(m) -> view_route(m, login.view, LoginMsg)
-        NotFound(_) -> [html.text("not found")]
-      },
-    ),
+    html.div([attribute.class("w-full flex-1 z-40")], case model.route {
+      Index -> [html.text("index")]
+      WeightTypes(m) -> view_route(m, weight_types.view, WeightTypesMsg)
+      Exercises(m) -> view_route(m, exercises.view, ExercisesMsg)
+      Login(m) -> view_route(m, login.view, LoginMsg)
+      Admin(m) -> view_route(m, admin.view, AdminMsg)
+      NotFound(_) -> [html.text("not found")]
+    }),
   ])
 }
 
@@ -159,7 +170,7 @@ fn render_header(model: Model) -> Element(Msg) {
   html.header(
     [
       attribute.class(
-        "bg-card border-border z-10 flex h-16 w-full items-center justify-center border-b shadow-md backdrop-blur-sm mb-4",
+        "relative bg-card border-border z-50 flex h-16 w-full items-center justify-center border-b shadow-md backdrop-blur-sm",
       ),
     ],
     [

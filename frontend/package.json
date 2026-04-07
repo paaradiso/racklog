@@ -7,5 +7,8 @@
     "@tailwindcss/vite": "^4.2.2",
     "vite": "^8.0.3",
     "vite-plugin-gleam": "^0.1.8"
+  },
+  "dependencies": {
+    "@knadh/oat": "^0.5.1"
   }
 }
