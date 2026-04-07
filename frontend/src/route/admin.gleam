@@ -148,47 +148,53 @@ fn view_users_tab(model: Model) -> Element(Msg) {
             |> list.flatten,
           children: [element.text("Add User")],
         ),
-        dialog.dialog([dialog.id(dialog_to_id(AddUserDialog))], [
-          dialog.header([], [dialog.title([], [html.text("Add User")])]),
-          html.div([attribute.class("flex flex-col gap-2")], [
-            components.form_input(
-              label: "Email Address",
-              id: "email",
-              name: "email",
-              attributes: [
-                attribute.type_("email"),
-                // attribute.value(model.email),
-              // event.on_input(UpdatedEmail),
-              ],
-            ),
-            components.form_input(
-              label: "Password",
-              id: "password",
-              name: "password",
-              attributes: [
-                attribute.type_("password"),
-                // attribute.value(model.password),
-              // event.on_input(UpdatedPassword),
-              ],
-            ),
-          ]),
-          dialog.footer([], [
-            components.button(
-              variant: ButtonSecondary,
-              href: "",
-              attributes: dialog.close_for(dialog_to_id(AddUserDialog)),
-              children: [html.text("Cancel")],
-            ),
-            components.button(
-              variant: ButtonPrimary,
-              href: "",
-              attributes: [
-                attribute.type_("submit"),
-              ],
-              children: [element.text("Add User")],
-            ),
-          ]),
-        ]),
+        dialog.dialog(
+          [
+            dialog.id(dialog_to_id(AddUserDialog)),
+            attribute.class("rounded-lg"),
+          ],
+          [
+            dialog.header([], [dialog.title([], [html.text("Add User")])]),
+            html.div([attribute.class("flex flex-col gap-2")], [
+              components.form_input(
+                label: "Email Address",
+                id: "email",
+                name: "email",
+                attributes: [
+                  attribute.type_("email"),
+                  // attribute.value(model.email),
+                // event.on_input(UpdatedEmail),
+                ],
+              ),
+              components.form_input(
+                label: "Password",
+                id: "password",
+                name: "password",
+                attributes: [
+                  attribute.type_("password"),
+                  // attribute.value(model.password),
+                // event.on_input(UpdatedPassword),
+                ],
+              ),
+            ]),
+            dialog.footer([], [
+              components.button(
+                variant: ButtonSecondary,
+                href: "",
+                attributes: dialog.close_for(dialog_to_id(AddUserDialog)),
+                children: [html.text("Cancel")],
+              ),
+              components.button(
+                variant: ButtonPrimary,
+                href: "",
+                attributes: [
+                  attribute.type_("submit"),
+                ],
+                children: [element.text("Add User")],
+              ),
+            ]),
+          ],
+        ),
       ],
       list.map(model.users, fn(user) {
         components.card_root([], [element.text(user.email)])
