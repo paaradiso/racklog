@@ -1,5 +1,5 @@
 import argus
-import auth/sql.{type CreateUserRow, type ListUsersRow}
+import auth/sql.{type CreateUserRow, type ListUsersRow, type UpdateUserByIdRow}
 import gleam/dynamic/decode
 import gleam/int
 import gleam/json
@@ -32,6 +32,21 @@ fn list_users_row_to_json(row: ListUsersRow) -> json.Json {
 }
 
 fn create_user_row_to_json(row: CreateUserRow) -> json.Json {
+  json.object([
+    #("id", json.int(row.id)),
+    #("email", json.string(row.email)),
+    #(
+      "created_at",
+      json.string(timestamp.to_rfc3339(row.created_at, duration.seconds(0))),
+    ),
+    #(
+      "updated_at",
+      json.string(timestamp.to_rfc3339(row.updated_at, duration.seconds(0))),
+    ),
+  ])
+}
+
+fn update_user_row_to_json(row: UpdateUserByIdRow) -> json.Json {
   json.object([
     #("id", json.int(row.id)),
     #("email", json.string(row.email)),
@@ -188,5 +203,49 @@ pub fn delete_user_by_id(_req: Request, ctx: Context, id: String) -> Response {
         Error(_) -> wisp.internal_server_error()
       }
     }
+  }
+}
+
+fn update_user_decoder() -> decode.Decoder(User) {
+  use email <- decode.optional_field("email", "", decode.string)
+  use password <- decode.optional_field("password", "", decode.string)
+  decode.success(User(email:, password:))
+}
+
+pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
+  use json <- wisp.require_json(req)
+
+  let update_user_result = {
+    use id <- result.try(
+      int.parse(id)
+      |> result.map_error(fn(_) { wisp.bad_request("Invalid Id") }),
+    )
+
+    use payload <- result.try(
+      decode.run(json, update_user_decoder())
+      |> result.map_error(fn(_) { wisp.unprocessable_content() }),
+    )
+
+    let hashed_password = case payload.password {
+      "" -> ""
+      password -> hash_password(password)
+    }
+
+    use returned <- result.try(
+      sql.update_user_by_id(ctx.db, payload.email, hashed_password, id)
+      |> result.map_error(fn(_) { wisp.internal_server_error() }),
+    )
+
+    use user <- result.try(
+      list.first(returned.rows) |> result.map_error(fn(_) { wisp.not_found() }),
+    )
+
+    Ok(
+      update_user_row_to_json(user) |> json.to_string |> wisp.json_response(200),
+    )
+  }
+  case update_user_result {
+    Ok(user) -> user
+    Error(error) -> error
   }
 }

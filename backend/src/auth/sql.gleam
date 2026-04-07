@@ -324,3 +324,65 @@ FROM
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
+
+/// A row you get from running the `update_user_by_id` query
+/// defined in `./src/auth/sql/update_user_by_id.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type UpdateUserByIdRow {
+  UpdateUserByIdRow(
+    id: Int,
+    email: String,
+    hashed_password: String,
+    created_at: Timestamp,
+    updated_at: Timestamp,
+  )
+}
+
+/// Runs the `update_user_by_id` query
+/// defined in `./src/auth/sql/update_user_by_id.sql`.
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn update_user_by_id(
+  db: pog.Connection,
+  arg_1: String,
+  arg_2: String,
+  arg_3: Int,
+) -> Result(pog.Returned(UpdateUserByIdRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use email <- decode.field(1, decode.string)
+    use hashed_password <- decode.field(2, decode.string)
+    use created_at <- decode.field(3, pog.timestamp_decoder())
+    use updated_at <- decode.field(4, pog.timestamp_decoder())
+    decode.success(UpdateUserByIdRow(
+      id:,
+      email:,
+      hashed_password:,
+      created_at:,
+      updated_at:,
+    ))
+  }
+
+  "UPDATE
+    app_user
+SET
+    email = COALESCE(NULLIF ($1, ''), email),
+    hashed_password = COALESCE(NULLIF ($2, ''), hashed_password)
+WHERE
+    id = $3
+RETURNING
+    *;
+
+"
+  |> pog.query
+  |> pog.parameter(pog.text(arg_1))
+  |> pog.parameter(pog.text(arg_2))
+  |> pog.parameter(pog.int(arg_3))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}

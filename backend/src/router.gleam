@@ -1,6 +1,6 @@
 import auth/auth
 import exercise/exercise
-import gleam/http.{Delete, Get, Post}
+import gleam/http.{Delete, Get, Patch, Post}
 import middleware
 import web.{type Context}
 import weight_type/weight_type
@@ -33,13 +33,12 @@ fn handle_authenticated(req: Request, ctx: Context) -> Response {
     _, ["api", "me"] -> wisp.method_not_allowed([Get])
 
     Get, ["api", "users"] -> auth.list_users(req, ctx)
-    _, ["api", "users"] -> wisp.method_not_allowed([Get])
+    Post, ["api", "users"] -> auth.create_user(req, ctx)
+    _, ["api", "users"] -> wisp.method_not_allowed([Get, Post])
 
     Delete, ["api", "users", id] -> auth.delete_user_by_id(req, ctx, id)
-    _, ["api", "users", _id] -> wisp.method_not_allowed([Delete])
-
-    Post, ["api", "create_user"] -> auth.create_user(req, ctx)
-    _, ["api", "create_user"] -> wisp.method_not_allowed([Post])
+    Patch, ["api", "users", id] -> auth.update_user_by_id(req, ctx, id)
+    _, ["api", "users", _id] -> wisp.method_not_allowed([Delete, Patch])
 
     _, _ -> wisp.not_found()
   }
