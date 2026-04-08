@@ -298,13 +298,15 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
       #(model, fx)
     }
     EditedUser(Ok(user)) -> {
-      let users = list.filter(model.users, fn(u) { u.id != user.id })
+      let users =
+        list.map(model.users, fn(u) {
+          case u.id == user.id {
+            True -> user
+            False -> u
+          }
+        })
       #(
-        Model(
-          ..model,
-          users: [user, ..users],
-          edit_user_form: default_edit_user_form(),
-        ),
+        Model(..model, users: users, edit_user_form: default_edit_user_form()),
         close_dialog(dialog_to_id(EditUserDialog)),
       )
     }
@@ -373,6 +375,9 @@ fn view_general_tab(model: Model) -> Element(Msg) {
 
 fn view_users_tab(model: Model) -> Element(Msg) {
   html.div([attribute.class("flex flex-col gap-2")], [
+    view_add_user_dialog(model),
+    view_edit_user_dialog(model),
+    view_confirm_dialog(model),
     components.button(
       variant: ButtonOutline,
       href: "",
@@ -383,9 +388,6 @@ fn view_users_tab(model: Model) -> Element(Msg) {
       ],
       children: [element.text("Add User")],
     ),
-    view_add_user_dialog(model),
-    view_edit_user_dialog(model),
-    view_confirm_dialog(model),
     ..list.map(model.users, fn(user) {
       components.card_root(
         [attribute.class("flex justify-between items-center")],
@@ -610,7 +612,7 @@ fn view_confirm_dialog(model: Model) -> Element(Msg) {
   }
 
   dialog.dialog([dialog.id("confirm"), attribute.class("rounded-lg")], [
-    dialog.header([], [dialog.title([], [html.text("Are you sure?")])]),
+    dialog.header([], [dialog.title([], [html.text(display_message)])]),
     html.div([attribute.class("flex flex-col gap-2")], [
       html.p([], [html.text(display_message)]),
     ]),
@@ -620,12 +622,7 @@ fn view_confirm_dialog(model: Model) -> Element(Msg) {
         href: "",
         attributes: [
           event.on_click(ClosedConfirmDialog),
-          ..dialog.close_for(
-            dialog_to_id(ConfirmDialog(
-              message: "",
-              on_confirm: DeleteUserRequestSent(0),
-            )),
-          )
+          ..dialog.close_for("confirm")
         ],
         children: [html.text("Cancel")],
       ),
