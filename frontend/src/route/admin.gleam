@@ -380,10 +380,10 @@ pub fn view(model: Model) -> List(Element(Msg)) {
   [
     sidebar.sidebar_always(
       html.div,
-      [attribute.class("w-full h-full flex flex-row overflow-hidden")],
+      [attribute.class("flex overflow-hidden flex-row w-full h-full")],
       [
-        sidebar.aside([attribute.class("w-64 overflow-y-auto bg-card")], [
-          sidebar.nav([attribute.class("flex flex-col text-md p-0")], [
+        sidebar.aside([attribute.class("overflow-y-auto w-64 bg-card")], [
+          sidebar.nav([attribute.class("flex flex-col p-0 text-md")], [
             view_sidebar_button(model.active_tab, GeneralTab, "General"),
             view_sidebar_button(model.active_tab, UsersTab, "Users"),
           ]),
@@ -392,7 +392,7 @@ pub fn view(model: Model) -> List(Element(Msg)) {
         html.main(
           [
             attribute.class(
-              "container flex-1 overflow-y-auto p-4 bg-background text-foreground",
+              "container overflow-y-auto flex-1 p-4 bg-background text-foreground",
             ),
           ],
           [
@@ -464,7 +464,7 @@ fn view_users_tab(model: Model) -> Element(Msg) {
               href: "",
               attributes: [
                 attribute.class(
-                  "py-0! h-10 px-4! flex items-center justify-center",
+                  "flex justify-center items-center h-10 py-0! px-4!",
                 ),
                 event.on_click(OpenedEditUserDialog(user)),
                 ..dialog.open_for(dialog_to_id(EditUserDialog))
@@ -479,7 +479,7 @@ fn view_users_tab(model: Model) -> Element(Msg) {
               href: "",
               attributes: [
                 attribute.class(
-                  "py-0! h-10 px-4! flex items-center justify-center",
+                  "flex justify-center items-center h-10 py-0! px-4!",
                 ),
                 event.on_click(OpenedConfirmDialog(
                   message: "This user will be permanently deleted.",
@@ -554,7 +554,7 @@ fn view_add_user_dialog(model: Model) -> Element(Msg) {
                 [
                   attribute.for("add_user_select"),
                   attribute.class(
-                    "block text-sm font-medium text-secondary-foreground mb-1",
+                    "block mb-1 text-sm font-medium text-secondary-foreground",
                   ),
                 ],
                 [element.text("Role")],
@@ -563,7 +563,7 @@ fn view_add_user_dialog(model: Model) -> Element(Msg) {
                 [
                   attribute.id("add_user_select"),
                   attribute.class(
-                    "w-full px-3 py-2 border border-input-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent placeholder:text-muted-foreground",
+                    "py-2 px-3 w-full rounded-md border focus:border-transparent focus:ring-2 focus:outline-none border-input-border placeholder:text-muted-foreground focus:ring-ring",
                   ),
                 ],
                 [html.option([], "User"), html.option([], "Admin")],

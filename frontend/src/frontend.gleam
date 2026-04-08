@@ -166,13 +166,13 @@ fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
 fn view(model: Model) -> Element(Msg) {
   html.div(
     [
-      attribute.class("h-screen flex flex-col w-full overflow-hidden"),
+      attribute.class("flex overflow-hidden flex-col w-full h-screen"),
     ],
     [
       render_header(model),
       html.div(
         [
-          attribute.class("w-full flex-1 flex z-40 min-h-0 overflow-hidden"),
+          attribute.class("flex overflow-hidden z-40 flex-1 w-full min-h-0"),
         ],
         case model.route {
           Index -> [html.text("index")]
@@ -200,23 +200,23 @@ fn render_header(model: Model) -> Element(Msg) {
   html.header(
     [
       attribute.class(
-        "shrink-0 relative bg-card border-border z-50 flex h-16 w-full items-center justify-center border-b shadow-md backdrop-blur-sm",
+        "flex relative z-50 justify-center items-center w-full h-16 border-b shadow-md shrink-0 bg-card border-border backdrop-blur-sm",
       ),
     ],
     [
       html.div(
-        [attribute.class("container flex items-center justify-between")],
+        [attribute.class("container flex justify-between items-center")],
         [
           html.nav(
             [
               attribute.attribute("aria-label", "Primary"),
-              attribute.class("flex items-center gap-4"),
+              attribute.class("flex gap-4 items-center"),
             ],
             [
               html.a(
                 [
                   href(IndexPath),
-                  attribute.class("text-foreground text-2xl font-bold mr-4"),
+                  attribute.class("mr-4 text-2xl font-bold text-foreground"),
                 ],
                 [
                   element.text("racklog"),
@@ -235,7 +235,7 @@ fn render_header(model: Model) -> Element(Msg) {
           html.nav(
             [
               attribute.attribute("aria-label", "Account"),
-              attribute.class("items-center gap-4 flex"),
+              attribute.class("flex gap-4 items-center"),
             ],
             [
               case model.user {

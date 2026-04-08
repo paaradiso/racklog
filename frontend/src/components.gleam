@@ -28,7 +28,7 @@ pub fn button(
 
   let all_attributes = [
     attribute.class(
-      "flex items-center justify-center py-2 px-4 font-medium rounded-lg cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+      "flex justify-center items-center py-2 px-4 font-medium rounded-lg transition-colors cursor-pointer focus:ring-2 focus:ring-offset-2 focus:outline-none focus:ring-ring",
     ),
     attribute.class(variant_styles),
     ..attributes
@@ -47,7 +47,7 @@ pub fn link(
   html.a(
     [
       attribute.class(
-        "text-secondary-foreground underline underline-offset-2 hover:text-muted-foreground transition-colors",
+        "underline transition-colors text-secondary-foreground underline-offset-2 hover:text-muted-foreground",
       ),
       ..attributes
     ],
@@ -66,7 +66,7 @@ pub fn form_input(
       [
         attribute.for(id),
         attribute.class(
-          "block text-sm font-medium text-secondary-foreground mb-1",
+          "block mb-1 text-sm font-medium text-secondary-foreground",
         ),
       ],
       [element.text(label)],
@@ -75,7 +75,7 @@ pub fn form_input(
       attribute.id(id),
       attribute.name(name),
       attribute.class(
-        "w-full px-3 py-2 border border-input-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent placeholder:text-muted-foreground",
+        "py-2 px-3 w-full rounded-md border focus:border-transparent focus:ring-2 focus:outline-none border-input-border placeholder:text-muted-foreground focus:ring-ring",
       ),
       ..attributes
     ]),
@@ -89,7 +89,7 @@ pub fn card_root(
   html.div(
     [
       attribute.class(
-        "rounded-lg border border-border bg-card text-card-foreground shadow-sm p-6",
+        "p-6 rounded-lg border shadow-sm border-border bg-card text-card-foreground",
       ),
       ..attributes
     ],
@@ -101,7 +101,7 @@ pub fn error_message_box(message message: String) -> Element(msg) {
   html.div(
     [
       attribute.class(
-        "flex items-center gap-2 p-2 text-sm bg-destructive-background-subtle border border-destructive-border text-destructive rounded",
+        "flex gap-2 items-center p-2 text-sm rounded border bg-destructive-background-subtle border-destructive-border text-destructive",
       ),
     ],
     [

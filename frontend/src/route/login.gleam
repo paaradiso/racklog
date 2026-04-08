@@ -59,11 +59,11 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
 
 pub fn view(model: Model) -> List(Element(Msg)) {
   [
-    html.div([attribute.class("flex items-center justify-center size-full")], [
+    html.div([attribute.class("flex justify-center items-center size-full")], [
       html.div(
         [
           attribute.class(
-            "flex flex-col gap-4 w-lg p-8 border border-border bg-card rounded-lg shadow-md",
+            "flex flex-col gap-4 p-8 rounded-lg border shadow-md w-lg border-border bg-card",
           ),
         ],
         [
