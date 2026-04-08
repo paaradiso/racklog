@@ -2,7 +2,6 @@ import components.{ButtonDanger, ButtonOutline, ButtonPrimary, ButtonSecondary}
 import glaze/oat/dialog
 import glaze/oat/sidebar
 import gleam/dynamic/decode
-import gleam/http/response
 import gleam/int
 import gleam/json
 import gleam/list
@@ -30,13 +29,6 @@ pub type User {
     created_at: String,
     updated_at: String,
   )
-}
-
-fn user_role_string_to_variant(user_role: String) -> AppUserRole {
-  case user_role {
-    "admin" -> AdminRole
-    _ -> UserRole
-  }
 }
 
 fn user_role_to_string(user_role: AppUserRole) -> String {
@@ -435,7 +427,7 @@ fn view_sidebar_button(
   )
 }
 
-fn view_general_tab(model: Model) -> Element(Msg) {
+fn view_general_tab(_model: Model) -> Element(Msg) {
   element.text("general")
 }
 
