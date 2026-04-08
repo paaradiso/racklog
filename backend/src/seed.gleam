@@ -99,6 +99,7 @@ pub fn main() {
   case
     auth_sql.create_user(
       connection,
+      "admin",
       "test@example.com",
       auth.hash_password("abc123abc"),
     )

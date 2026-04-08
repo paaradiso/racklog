@@ -13,12 +13,13 @@ import wisp.{type Request, type Response}
 import youid/uuid
 
 pub type User {
-  User(email: String, password: String)
+  User(username: String, email: String, password: String)
 }
 
 fn list_users_row_to_json(row: ListUsersRow) -> json.Json {
   json.object([
     #("id", json.int(row.id)),
+    #("username", json.string(row.username)),
     #("email", json.string(row.email)),
     #(
       "created_at",
@@ -34,6 +35,7 @@ fn list_users_row_to_json(row: ListUsersRow) -> json.Json {
 fn create_user_row_to_json(row: CreateUserRow) -> json.Json {
   json.object([
     #("id", json.int(row.id)),
+    #("username", json.string(row.username)),
     #("email", json.string(row.email)),
     #(
       "created_at",
@@ -49,6 +51,7 @@ fn create_user_row_to_json(row: CreateUserRow) -> json.Json {
 fn update_user_row_to_json(row: UpdateUserByIdRow) -> json.Json {
   json.object([
     #("id", json.int(row.id)),
+    #("username", json.string(row.username)),
     #("email", json.string(row.email)),
     #(
       "created_at",
@@ -65,6 +68,13 @@ fn user_credentials_decoder() -> decode.Decoder(#(String, String)) {
   use email <- decode.field("email", decode.string)
   use password <- decode.field("password", decode.string)
   decode.success(#(email, password))
+}
+
+fn user_details_decoder() -> decode.Decoder(User) {
+  use username <- decode.field("username", decode.string)
+  use email <- decode.field("email", decode.string)
+  use password <- decode.field("password", decode.string)
+  decode.success(User(username:, email:, password:))
 }
 
 pub fn hash_password(password password: String) -> String {
@@ -129,15 +139,20 @@ pub fn create_user(req: Request, ctx: Context) -> Response {
   use json <- wisp.require_json(req)
 
   let create_user_result = {
-    use #(email, password) <- result.try(
-      decode.run(json, user_credentials_decoder())
+    use user_details <- result.try(
+      decode.run(json, user_details_decoder())
       |> result.map_error(fn(_) { wisp.unprocessable_content() }),
     )
 
-    let hashed_password = hash_password(password)
+    let hashed_password = hash_password(user_details.password)
 
     use returned <- result.try(
-      sql.create_user(ctx.db, email, hashed_password)
+      sql.create_user(
+        ctx.db,
+        user_details.username,
+        user_details.email,
+        hashed_password,
+      )
       |> result.map_error(fn(_) { wisp.internal_server_error() }),
     )
 
@@ -171,6 +186,7 @@ pub fn me(_req: Request, ctx: Context) -> Response {
       Ok(
         json.object([
           #("id", json.int(user.id)),
+          #("username", json.string(user.username)),
           #("email", json.string(user.email)),
         ])
         |> json.to_string
@@ -207,9 +223,10 @@ pub fn delete_user_by_id(_req: Request, ctx: Context, id: String) -> Response {
 }
 
 fn update_user_decoder() -> decode.Decoder(User) {
+  use username <- decode.optional_field("username", "", decode.string)
   use email <- decode.optional_field("email", "", decode.string)
   use password <- decode.optional_field("password", "", decode.string)
-  decode.success(User(email:, password:))
+  decode.success(User(username:, email:, password:))
 }
 
 pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
@@ -232,7 +249,13 @@ pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
     }
 
     use returned <- result.try(
-      sql.update_user_by_id(ctx.db, payload.email, hashed_password, id)
+      sql.update_user_by_id(
+        ctx.db,
+        payload.username,
+        payload.email,
+        hashed_password,
+        id,
+      )
       |> result.map_error(fn(_) { wisp.internal_server_error() }),
     )
 

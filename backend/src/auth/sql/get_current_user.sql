@@ -1,5 +1,6 @@
 SELECT
     id,
+    username,
     email
 FROM
     app_user

@@ -1,10 +1,11 @@
 UPDATE
     app_user
 SET
-    email = COALESCE(NULLIF ($1, ''), email),
-    hashed_password = COALESCE(NULLIF ($2, ''), hashed_password)
+    username = COALESCE(NULLIF ($1, ''), username),
+    email = COALESCE(NULLIF ($2, ''), email),
+    hashed_password = COALESCE(NULLIF ($3, ''), hashed_password)
 WHERE
-    id = $3
+    id = $4
 RETURNING
     *;
 

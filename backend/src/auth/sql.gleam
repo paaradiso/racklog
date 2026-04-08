@@ -68,6 +68,7 @@ pub type CreateUserRow {
     hashed_password: String,
     created_at: Timestamp,
     updated_at: Timestamp,
+    username: String,
   )
 }
 
@@ -81,6 +82,7 @@ pub fn create_user(
   db: pog.Connection,
   arg_1: String,
   arg_2: String,
+  arg_3: String,
 ) -> Result(pog.Returned(CreateUserRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -88,23 +90,26 @@ pub fn create_user(
     use hashed_password <- decode.field(2, decode.string)
     use created_at <- decode.field(3, pog.timestamp_decoder())
     use updated_at <- decode.field(4, pog.timestamp_decoder())
+    use username <- decode.field(5, decode.string)
     decode.success(CreateUserRow(
       id:,
       email:,
       hashed_password:,
       created_at:,
       updated_at:,
+      username:,
     ))
   }
 
-  "INSERT INTO app_user (email, hashed_password)
-    VALUES ($1, $2)
+  "INSERT INTO app_user (username, email, hashed_password)
+    VALUES ($1, $2, $3)
 RETURNING
     *
 "
   |> pog.query
   |> pog.parameter(pog.text(arg_1))
   |> pog.parameter(pog.text(arg_2))
+  |> pog.parameter(pog.text(arg_3))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -138,7 +143,7 @@ WHERE id = $1;
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub type GetCurrentUserRow {
-  GetCurrentUserRow(id: Int, email: String)
+  GetCurrentUserRow(id: Int, username: String, email: String)
 }
 
 /// Runs the `get_current_user` query
@@ -153,12 +158,14 @@ pub fn get_current_user(
 ) -> Result(pog.Returned(GetCurrentUserRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
-    use email <- decode.field(1, decode.string)
-    decode.success(GetCurrentUserRow(id:, email:))
+    use username <- decode.field(1, decode.string)
+    use email <- decode.field(2, decode.string)
+    decode.success(GetCurrentUserRow(id:, username:, email:))
   }
 
   "SELECT
     id,
+    username,
     email
 FROM
     app_user
@@ -233,6 +240,7 @@ pub type GetUserByEmailRow {
     hashed_password: String,
     created_at: Timestamp,
     updated_at: Timestamp,
+    username: String,
   )
 }
 
@@ -252,12 +260,14 @@ pub fn get_user_by_email(
     use hashed_password <- decode.field(2, decode.string)
     use created_at <- decode.field(3, pog.timestamp_decoder())
     use updated_at <- decode.field(4, pog.timestamp_decoder())
+    use username <- decode.field(5, decode.string)
     decode.success(GetUserByEmailRow(
       id:,
       email:,
       hashed_password:,
       created_at:,
       updated_at:,
+      username:,
     ))
   }
 
@@ -288,6 +298,7 @@ pub type ListUsersRow {
     hashed_password: String,
     created_at: Timestamp,
     updated_at: Timestamp,
+    username: String,
   )
 }
 
@@ -306,12 +317,14 @@ pub fn list_users(
     use hashed_password <- decode.field(2, decode.string)
     use created_at <- decode.field(3, pog.timestamp_decoder())
     use updated_at <- decode.field(4, pog.timestamp_decoder())
+    use username <- decode.field(5, decode.string)
     decode.success(ListUsersRow(
       id:,
       email:,
       hashed_password:,
       created_at:,
       updated_at:,
+      username:,
     ))
   }
 
@@ -338,6 +351,7 @@ pub type UpdateUserByIdRow {
     hashed_password: String,
     created_at: Timestamp,
     updated_at: Timestamp,
+    username: String,
   )
 }
 
@@ -351,7 +365,8 @@ pub fn update_user_by_id(
   db: pog.Connection,
   arg_1: String,
   arg_2: String,
-  arg_3: Int,
+  arg_3: String,
+  arg_4: Int,
 ) -> Result(pog.Returned(UpdateUserByIdRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -359,22 +374,25 @@ pub fn update_user_by_id(
     use hashed_password <- decode.field(2, decode.string)
     use created_at <- decode.field(3, pog.timestamp_decoder())
     use updated_at <- decode.field(4, pog.timestamp_decoder())
+    use username <- decode.field(5, decode.string)
     decode.success(UpdateUserByIdRow(
       id:,
       email:,
       hashed_password:,
       created_at:,
       updated_at:,
+      username:,
     ))
   }
 
   "UPDATE
     app_user
 SET
-    email = COALESCE(NULLIF ($1, ''), email),
-    hashed_password = COALESCE(NULLIF ($2, ''), hashed_password)
+    username = COALESCE(NULLIF ($1, ''), username),
+    email = COALESCE(NULLIF ($2, ''), email),
+    hashed_password = COALESCE(NULLIF ($3, ''), hashed_password)
 WHERE
-    id = $3
+    id = $4
 RETURNING
     *;
 
@@ -382,7 +400,8 @@ RETURNING
   |> pog.query
   |> pog.parameter(pog.text(arg_1))
   |> pog.parameter(pog.text(arg_2))
-  |> pog.parameter(pog.int(arg_3))
+  |> pog.parameter(pog.text(arg_3))
+  |> pog.parameter(pog.int(arg_4))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
