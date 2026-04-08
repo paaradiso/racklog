@@ -40,53 +40,26 @@ fn app_user_role_to_string(app_user_role: AppUserRole) -> String {
   }
 }
 
-fn list_users_row_to_json(row: ListUsersRow) -> json.Json {
+fn user_row_to_json(
+  id id: Int,
+  username username: String,
+  email email: String,
+  user_role user_role: AppUserRole,
+  created_at created_at: timestamp.Timestamp,
+  updated_at updated_at: timestamp.Timestamp,
+) -> json.Json {
   json.object([
-    #("id", json.int(row.id)),
-    #("username", json.string(row.username)),
-    #("email", json.string(row.email)),
-    #("user_role", json.string(app_user_role_to_string(row.user_role))),
+    #("id", json.int(id)),
+    #("username", json.string(username)),
+    #("email", json.string(email)),
+    #("user_role", json.string(app_user_role_to_string(user_role))),
     #(
       "created_at",
-      json.string(timestamp.to_rfc3339(row.created_at, duration.seconds(0))),
+      json.string(timestamp.to_rfc3339(created_at, duration.seconds(0))),
     ),
     #(
       "updated_at",
-      json.string(timestamp.to_rfc3339(row.updated_at, duration.seconds(0))),
-    ),
-  ])
-}
-
-fn create_user_row_to_json(row: CreateUserRow) -> json.Json {
-  json.object([
-    #("id", json.int(row.id)),
-    #("username", json.string(row.username)),
-    #("email", json.string(row.email)),
-    #("user_role", json.string(app_user_role_to_string(row.user_role))),
-    #(
-      "created_at",
-      json.string(timestamp.to_rfc3339(row.created_at, duration.seconds(0))),
-    ),
-    #(
-      "updated_at",
-      json.string(timestamp.to_rfc3339(row.updated_at, duration.seconds(0))),
-    ),
-  ])
-}
-
-fn update_user_row_to_json(row: UpdateUserByIdRow) -> json.Json {
-  json.object([
-    #("id", json.int(row.id)),
-    #("username", json.string(row.username)),
-    #("email", json.string(row.email)),
-    #("user_role", json.string(app_user_role_to_string(row.user_role))),
-    #(
-      "created_at",
-      json.string(timestamp.to_rfc3339(row.created_at, duration.seconds(0))),
-    ),
-    #(
-      "updated_at",
-      json.string(timestamp.to_rfc3339(row.updated_at, duration.seconds(0))),
+      json.string(timestamp.to_rfc3339(updated_at, duration.seconds(0))),
     ),
   ])
 }
@@ -190,7 +163,16 @@ pub fn create_user(req: Request, ctx: Context) -> Response {
     )
 
     Ok(
-      create_user_row_to_json(user) |> json.to_string |> wisp.json_response(200),
+      user_row_to_json(
+        user.id,
+        user.email,
+        user.username,
+        user.user_role,
+        user.created_at,
+        user.updated_at,
+      )
+      |> json.to_string
+      |> wisp.json_response(200),
     )
   }
   case create_user_result {
@@ -230,7 +212,16 @@ pub fn list_users(_req: Request, ctx: Context) -> Response {
   case sql.list_users(ctx.db) {
     Ok(returned) ->
       returned.rows
-      |> json.array(list_users_row_to_json)
+      |> json.array(fn(row) {
+        user_row_to_json(
+          id: row.id,
+          username: row.username,
+          email: row.email,
+          user_role: row.user_role,
+          created_at: row.created_at,
+          updated_at: row.updated_at,
+        )
+      })
       |> json.to_string
       |> wisp.json_response(200)
     Error(_) -> {
@@ -314,7 +305,16 @@ pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
     )
 
     Ok(
-      update_user_row_to_json(user) |> json.to_string |> wisp.json_response(200),
+      user_row_to_json(
+        user.id,
+        user.email,
+        user.username,
+        user.user_role,
+        user.created_at,
+        user.updated_at,
+      )
+      |> json.to_string
+      |> wisp.json_response(200),
     )
   }
   case update_user_result {
