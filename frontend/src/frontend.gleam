@@ -23,8 +23,13 @@ pub fn main() -> Nil {
   Nil
 }
 
+type AppUserRole {
+  UserRole
+  AdminRole
+}
+
 type User {
-  User(id: Int, username: String, email: String)
+  User(id: Int, username: String, email: String, user_role: AppUserRole)
 }
 
 type Path {
@@ -111,11 +116,21 @@ fn fetch_current_user() -> Effect(Msg) {
   rsvp.get("/api/me", rsvp.expect_json(decode_user(), GotCurrentUser))
 }
 
+fn decode_role() -> decode.Decoder(AppUserRole) {
+  use role_str <- decode.then(decode.string)
+  case role_str {
+    "admin" -> decode.success(AdminRole)
+    "user" -> decode.success(UserRole)
+    _ -> decode.failure(UserRole, "admin or user")
+  }
+}
+
 fn decode_user() -> decode.Decoder(User) {
   use id <- decode.field("id", decode.int)
   use username <- decode.field("username", decode.string)
   use email <- decode.field("email", decode.string)
-  decode.success(User(id:, username:, email:))
+  use user_role <- decode.field("user_role", decode_role())
+  decode.success(User(id:, username:, email:, user_role:))
 }
 
 fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {

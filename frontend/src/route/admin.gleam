@@ -16,23 +16,60 @@ import lustre/event
 import modem
 import rsvp
 
+pub type AppUserRole {
+  UserRole
+  AdminRole
+}
+
 pub type User {
   User(
     id: Int,
     username: String,
     email: String,
+    user_role: AppUserRole,
     created_at: String,
     updated_at: String,
   )
+}
+
+fn user_role_string_to_variant(user_role: String) -> AppUserRole {
+  case user_role {
+    "admin" -> AdminRole
+    _ -> UserRole
+  }
+}
+
+fn user_role_to_string(user_role: AppUserRole) -> String {
+  case user_role {
+    AdminRole -> "admin"
+    UserRole -> "user"
+  }
+}
+
+fn decode_role() -> decode.Decoder(AppUserRole) {
+  use role_str <- decode.then(decode.string)
+  case role_str {
+    "admin" -> decode.success(AdminRole)
+    "user" -> decode.success(UserRole)
+    _ -> decode.failure(UserRole, "admin or user")
+  }
 }
 
 fn user_decoder() -> decode.Decoder(User) {
   use id <- decode.field("id", decode.int)
   use username <- decode.field("username", decode.string)
   use email <- decode.field("email", decode.string)
+  use user_role <- decode.field("user_role", decode_role())
   use created_at <- decode.field("created_at", decode.string)
   use updated_at <- decode.field("updated_at", decode.string)
-  decode.success(User(id:, username:, email:, created_at:, updated_at:))
+  decode.success(User(
+    id:,
+    username:,
+    email:,
+    user_role:,
+    created_at:,
+    updated_at:,
+  ))
 }
 
 fn users_decoder() -> decode.Decoder(List(User)) {
@@ -59,7 +96,13 @@ pub type Dialog {
 }
 
 pub type AddUserForm {
-  AddUserForm(username: String, email: String, password: String, error: String)
+  AddUserForm(
+    username: String,
+    email: String,
+    password: String,
+    user_role: AppUserRole,
+    error: String,
+  )
 }
 
 pub type EditUserForm {
@@ -68,16 +111,30 @@ pub type EditUserForm {
     username: String,
     email: String,
     password: String,
+    user_role: AppUserRole,
     error: String,
   )
 }
 
 fn default_add_user_form() -> AddUserForm {
-  AddUserForm(username: "", email: "", password: "", error: "")
+  AddUserForm(
+    username: "",
+    email: "",
+    password: "",
+    user_role: UserRole,
+    error: "",
+  )
 }
 
 fn default_edit_user_form() -> EditUserForm {
-  EditUserForm(id: 0, username: "", email: "", password: "", error: "")
+  EditUserForm(
+    id: 0,
+    username: "",
+    email: "",
+    password: "",
+    user_role: UserRole,
+    error: "",
+  )
 }
 
 fn dialog_to_id(dialog: Dialog) -> String {
@@ -178,6 +235,7 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
           username: user.username,
           email: user.email,
           password: "",
+          user_role: user.user_role,
           error: "",
         ),
       ),
@@ -245,6 +303,10 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
             #("username", json.string(model.add_user_form.username)),
             #("email", json.string(model.add_user_form.email)),
             #("password", json.string(model.add_user_form.password)),
+            #(
+              "user_role",
+              json.string(user_role_to_string(model.add_user_form.user_role)),
+            ),
           ]),
           rsvp.expect_json(user_decoder(), AddedUser),
         )
@@ -279,6 +341,10 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
     SubmittedEditUser -> {
       let payload_fields = [
         #("email", json.string(model.edit_user_form.email)),
+        #(
+          "user_role",
+          json.string(user_role_to_string(model.edit_user_form.user_role)),
+        ),
       ]
       let payload_fields = case model.edit_user_form.password {
         "" -> payload_fields
@@ -499,6 +565,26 @@ fn view_add_user_dialog(model: Model) -> Element(Msg) {
                 event.on_input(UpdatedAddUserPassword),
               ],
             ),
+            html.div([], [
+              html.label(
+                [
+                  attribute.for("add_user_select"),
+                  attribute.class(
+                    "block text-sm font-medium text-secondary-foreground mb-1",
+                  ),
+                ],
+                [element.text("Role")],
+              ),
+              html.select(
+                [
+                  attribute.id("add_user_select"),
+                  attribute.class(
+                    "w-full px-3 py-2 border border-input-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent placeholder:text-muted-foreground",
+                  ),
+                ],
+                [html.option([], "User"), html.option([], "Admin")],
+              ),
+            ]),
           ]),
         ],
       ),
