@@ -640,5 +640,5 @@ fn close_dialog(id: String) -> Effect(Msg) {
   effect.from(fn(_) { js_close_dialog("#" <> id) })
 }
 
-@external(javascript, "../ffi/admin.js", "closeDialog")
+@external(javascript, "../ffi.js", "closeDialog")
 fn js_close_dialog(selector: String) -> Nil
