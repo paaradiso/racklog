@@ -1,10 +1,13 @@
 import argus
-import auth/sql.{type CreateUserRow, type ListUsersRow, type UpdateUserByIdRow}
+import auth/sql.{
+  type AppUserRole, type CreateUserRow, type ListUsersRow,
+  type UpdateUserByIdRow,
+}
 import gleam/dynamic/decode
 import gleam/int
 import gleam/json
 import gleam/list
-import gleam/option
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/time/duration
 import gleam/time/timestamp
@@ -13,7 +16,28 @@ import wisp.{type Request, type Response}
 import youid/uuid
 
 pub type User {
-  User(username: String, email: String, password: String)
+  User(
+    username: String,
+    email: String,
+    password: String,
+    user_role: AppUserRole,
+  )
+}
+
+fn app_user_role_decoder() -> decode.Decoder(AppUserRole) {
+  use role_str <- decode.then(decode.string)
+  case role_str {
+    "admin" -> decode.success(sql.Admin)
+    "user" -> decode.success(sql.User)
+    _ -> decode.failure(sql.User, "admin or user")
+  }
+}
+
+fn app_user_role_to_string(app_user_role: AppUserRole) -> String {
+  case app_user_role {
+    sql.Admin -> "admin"
+    sql.User -> "user"
+  }
 }
 
 fn list_users_row_to_json(row: ListUsersRow) -> json.Json {
@@ -21,6 +45,7 @@ fn list_users_row_to_json(row: ListUsersRow) -> json.Json {
     #("id", json.int(row.id)),
     #("username", json.string(row.username)),
     #("email", json.string(row.email)),
+    #("user_role", json.string(app_user_role_to_string(row.user_role))),
     #(
       "created_at",
       json.string(timestamp.to_rfc3339(row.created_at, duration.seconds(0))),
@@ -37,6 +62,7 @@ fn create_user_row_to_json(row: CreateUserRow) -> json.Json {
     #("id", json.int(row.id)),
     #("username", json.string(row.username)),
     #("email", json.string(row.email)),
+    #("user_role", json.string(app_user_role_to_string(row.user_role))),
     #(
       "created_at",
       json.string(timestamp.to_rfc3339(row.created_at, duration.seconds(0))),
@@ -53,6 +79,7 @@ fn update_user_row_to_json(row: UpdateUserByIdRow) -> json.Json {
     #("id", json.int(row.id)),
     #("username", json.string(row.username)),
     #("email", json.string(row.email)),
+    #("user_role", json.string(app_user_role_to_string(row.user_role))),
     #(
       "created_at",
       json.string(timestamp.to_rfc3339(row.created_at, duration.seconds(0))),
@@ -74,7 +101,8 @@ fn user_details_decoder() -> decode.Decoder(User) {
   use username <- decode.field("username", decode.string)
   use email <- decode.field("email", decode.string)
   use password <- decode.field("password", decode.string)
-  decode.success(User(username:, email:, password:))
+  use user_role <- decode.field("user_role", app_user_role_decoder())
+  decode.success(User(username:, email:, password:, user_role:))
 }
 
 pub fn hash_password(password password: String) -> String {
@@ -152,6 +180,7 @@ pub fn create_user(req: Request, ctx: Context) -> Response {
         user_details.username,
         user_details.email,
         hashed_password,
+        user_details.user_role,
       )
       |> result.map_error(fn(_) { wisp.internal_server_error() }),
     )
@@ -222,11 +251,26 @@ pub fn delete_user_by_id(_req: Request, ctx: Context, id: String) -> Response {
   }
 }
 
-fn update_user_decoder() -> decode.Decoder(User) {
+pub type UserUpdate {
+  UpdateUser(
+    username: String,
+    email: String,
+    password: String,
+    user_role: Option(AppUserRole),
+  )
+}
+
+fn update_user_decoder() -> decode.Decoder(UserUpdate) {
   use username <- decode.optional_field("username", "", decode.string)
   use email <- decode.optional_field("email", "", decode.string)
   use password <- decode.optional_field("password", "", decode.string)
-  decode.success(User(username:, email:, password:))
+  use user_role <- decode.optional_field(
+    "user_role",
+    option.None,
+    decode.optional(app_user_role_decoder()),
+  )
+
+  decode.success(UpdateUser(username:, email:, password:, user_role:))
 }
 
 pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
@@ -248,12 +292,18 @@ pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
       password -> hash_password(password)
     }
 
+    let role_string = case payload.user_role {
+      option.Some(role) -> app_user_role_to_string(role)
+      option.None -> ""
+    }
+
     use returned <- result.try(
       sql.update_user_by_id(
         ctx.db,
         payload.username,
         payload.email,
         hashed_password,
+        role_string,
         id,
       )
       |> result.map_error(fn(_) { wisp.internal_server_error() }),

@@ -1,7 +1,8 @@
 SELECT
     id,
     username,
-    email
+    email,
+    user_role
 FROM
     app_user
 WHERE

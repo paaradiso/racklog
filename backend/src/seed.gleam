@@ -102,6 +102,7 @@ pub fn main() {
       "admin",
       "test@example.com",
       auth.hash_password("abc123abc"),
+      auth_sql.User,
     )
   {
     Ok(_) -> io.println("Created user")

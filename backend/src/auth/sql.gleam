@@ -69,6 +69,7 @@ pub type CreateUserRow {
     created_at: Timestamp,
     updated_at: Timestamp,
     username: String,
+    user_role: AppUserRole,
   )
 }
 
@@ -83,6 +84,7 @@ pub fn create_user(
   arg_1: String,
   arg_2: String,
   arg_3: String,
+  arg_4: AppUserRole,
 ) -> Result(pog.Returned(CreateUserRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -91,6 +93,7 @@ pub fn create_user(
     use created_at <- decode.field(3, pog.timestamp_decoder())
     use updated_at <- decode.field(4, pog.timestamp_decoder())
     use username <- decode.field(5, decode.string)
+    use user_role <- decode.field(6, app_user_role_decoder())
     decode.success(CreateUserRow(
       id:,
       email:,
@@ -98,11 +101,12 @@ pub fn create_user(
       created_at:,
       updated_at:,
       username:,
+      user_role:,
     ))
   }
 
-  "INSERT INTO app_user (username, email, hashed_password)
-    VALUES ($1, $2, $3)
+  "INSERT INTO app_user (username, email, hashed_password, user_role)
+    VALUES ($1, $2, $3, $4)
 RETURNING
     *
 "
@@ -110,6 +114,7 @@ RETURNING
   |> pog.parameter(pog.text(arg_1))
   |> pog.parameter(pog.text(arg_2))
   |> pog.parameter(pog.text(arg_3))
+  |> pog.parameter(app_user_role_encoder(arg_4))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -143,7 +148,12 @@ WHERE id = $1;
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub type GetCurrentUserRow {
-  GetCurrentUserRow(id: Int, username: String, email: String)
+  GetCurrentUserRow(
+    id: Int,
+    username: String,
+    email: String,
+    user_role: AppUserRole,
+  )
 }
 
 /// Runs the `get_current_user` query
@@ -160,13 +170,15 @@ pub fn get_current_user(
     use id <- decode.field(0, decode.int)
     use username <- decode.field(1, decode.string)
     use email <- decode.field(2, decode.string)
-    decode.success(GetCurrentUserRow(id:, username:, email:))
+    use user_role <- decode.field(3, app_user_role_decoder())
+    decode.success(GetCurrentUserRow(id:, username:, email:, user_role:))
   }
 
   "SELECT
     id,
     username,
-    email
+    email,
+    user_role
 FROM
     app_user
 WHERE
@@ -241,6 +253,7 @@ pub type GetUserByEmailRow {
     created_at: Timestamp,
     updated_at: Timestamp,
     username: String,
+    user_role: AppUserRole,
   )
 }
 
@@ -261,6 +274,7 @@ pub fn get_user_by_email(
     use created_at <- decode.field(3, pog.timestamp_decoder())
     use updated_at <- decode.field(4, pog.timestamp_decoder())
     use username <- decode.field(5, decode.string)
+    use user_role <- decode.field(6, app_user_role_decoder())
     decode.success(GetUserByEmailRow(
       id:,
       email:,
@@ -268,6 +282,7 @@ pub fn get_user_by_email(
       created_at:,
       updated_at:,
       username:,
+      user_role:,
     ))
   }
 
@@ -299,6 +314,7 @@ pub type ListUsersRow {
     created_at: Timestamp,
     updated_at: Timestamp,
     username: String,
+    user_role: AppUserRole,
   )
 }
 
@@ -318,6 +334,7 @@ pub fn list_users(
     use created_at <- decode.field(3, pog.timestamp_decoder())
     use updated_at <- decode.field(4, pog.timestamp_decoder())
     use username <- decode.field(5, decode.string)
+    use user_role <- decode.field(6, app_user_role_decoder())
     decode.success(ListUsersRow(
       id:,
       email:,
@@ -325,6 +342,7 @@ pub fn list_users(
       created_at:,
       updated_at:,
       username:,
+      user_role:,
     ))
   }
 
@@ -352,6 +370,7 @@ pub type UpdateUserByIdRow {
     created_at: Timestamp,
     updated_at: Timestamp,
     username: String,
+    user_role: AppUserRole,
   )
 }
 
@@ -366,7 +385,8 @@ pub fn update_user_by_id(
   arg_1: String,
   arg_2: String,
   arg_3: String,
-  arg_4: Int,
+  arg_4: String,
+  arg_5: Int,
 ) -> Result(pog.Returned(UpdateUserByIdRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -375,6 +395,7 @@ pub fn update_user_by_id(
     use created_at <- decode.field(3, pog.timestamp_decoder())
     use updated_at <- decode.field(4, pog.timestamp_decoder())
     use username <- decode.field(5, decode.string)
+    use user_role <- decode.field(6, app_user_role_decoder())
     decode.success(UpdateUserByIdRow(
       id:,
       email:,
@@ -382,6 +403,7 @@ pub fn update_user_by_id(
       created_at:,
       updated_at:,
       username:,
+      user_role:,
     ))
   }
 
@@ -390,9 +412,10 @@ pub fn update_user_by_id(
 SET
     username = COALESCE(NULLIF ($1, ''), username),
     email = COALESCE(NULLIF ($2, ''), email),
-    hashed_password = COALESCE(NULLIF ($3, ''), hashed_password)
+    hashed_password = COALESCE(NULLIF ($3, ''), hashed_password),
+    user_role = COALESCE(NULLIF ($4::text, '')::app_user_role, user_role)
 WHERE
-    id = $4
+    id = $5
 RETURNING
     *;
 
@@ -401,7 +424,37 @@ RETURNING
   |> pog.parameter(pog.text(arg_1))
   |> pog.parameter(pog.text(arg_2))
   |> pog.parameter(pog.text(arg_3))
-  |> pog.parameter(pog.int(arg_4))
+  |> pog.parameter(pog.text(arg_4))
+  |> pog.parameter(pog.int(arg_5))
   |> pog.returning(decoder)
   |> pog.execute(db)
+}
+
+// --- Enums -------------------------------------------------------------------
+
+/// Corresponds to the Postgres `app_user_role` enum.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type AppUserRole {
+  Admin
+  User
+}
+
+fn app_user_role_decoder() -> decode.Decoder(AppUserRole) {
+  use app_user_role <- decode.then(decode.string)
+  case app_user_role {
+    "admin" -> decode.success(Admin)
+    "user" -> decode.success(User)
+    _ -> decode.failure(Admin, "AppUserRole")
+  }
+}
+
+fn app_user_role_encoder(app_user_role) -> pog.Value {
+  case app_user_role {
+    Admin -> "admin"
+    User -> "user"
+  }
+  |> pog.text
 }
