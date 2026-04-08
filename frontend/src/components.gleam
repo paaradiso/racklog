@@ -95,3 +95,14 @@ pub fn card_root(
     children,
   )
 }
+
+pub fn error_message_box(message message: String) -> Element(msg) {
+  html.div(
+    [
+      attribute.class(
+        "p-2 text-sm bg-destructive-background-subtle border border-destructive-border text-destructive rounded",
+      ),
+    ],
+    [element.text(message)],
+  )
+}

@@ -518,15 +518,7 @@ fn view_add_user_dialog(model: Model) -> Element(Msg) {
           html.div([attribute.class("flex flex-col gap-2")], [
             case model.add_user_form.error {
               "" -> element.none()
-              msg ->
-                html.div(
-                  [
-                    attribute.class(
-                      "p-2 text-sm bg-destructive-background-subtle border border-destructive-border text-destructive rounded",
-                    ),
-                  ],
-                  [element.text(msg)],
-                )
+              msg -> components.error_message_box(msg)
             },
             components.form_input(
               label: "Username",
@@ -620,15 +612,7 @@ fn view_edit_user_dialog(model: Model) -> Element(Msg) {
           html.div([attribute.class("flex flex-col gap-2")], [
             case model.edit_user_form.error {
               "" -> element.none()
-              msg ->
-                html.div(
-                  [
-                    attribute.class(
-                      "p-2 text-sm bg-destructive-background-subtle border border-destructive-border text-destructive rounded",
-                    ),
-                  ],
-                  [element.text(msg)],
-                )
+              msg -> components.error_message_box(msg)
             },
             components.form_input(
               label: "Username",

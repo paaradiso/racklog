@@ -72,15 +72,7 @@ pub fn view(model: Model) -> List(Element(Msg)) {
           ]),
           case model.error {
             "" -> element.none()
-            msg ->
-              html.div(
-                [
-                  attribute.class(
-                    "p-2 text-sm bg-destructive-background-subtle border border-destructive-border text-destructive rounded",
-                  ),
-                ],
-                [element.text(msg)],
-              )
+            msg -> components.error_message_box(msg)
           },
           html.form(
             [
