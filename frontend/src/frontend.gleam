@@ -76,6 +76,11 @@ fn uri_to_route(uri: Uri) -> #(Route, Effect(Msg)) {
       let #(model, fx) = admin.init()
       #(Admin(model), effect.map(fx, AdminMsg))
     }
+    ["admin", tab] -> {
+      let tab = admin.tab_name_to_tab(tab) |> option.unwrap(admin.GeneralTab)
+      let #(model, fx) = admin.init_with_tab(tab)
+      #(Admin(model), effect.map(fx, AdminMsg))
+    }
     _ -> #(NotFound(uri:), effect.none())
   }
 }

@@ -44,6 +44,14 @@ pub type Tab {
   UsersTab
 }
 
+pub fn tab_name_to_tab(tab_name: String) -> Option(Tab) {
+  case tab_name {
+    "users" -> Some(UsersTab)
+    "general" -> Some(GeneralTab)
+    _ -> None
+  }
+}
+
 pub type Dialog {
   AddUserDialog
   EditUserDialog
@@ -113,28 +121,48 @@ pub type Msg {
 }
 
 pub fn init() -> #(Model, Effect(Msg)) {
-  #(
+  init_with_tab(GeneralTab)
+}
+
+pub fn init_with_tab(tab: Tab) -> #(Model, Effect(Msg)) {
+  let model =
     Model(
-      active_tab: GeneralTab,
+      active_tab: tab,
       users: [],
       add_user_form: default_add_user_form(),
       edit_user_form: default_edit_user_form(),
       confirm_dialog: None,
-    ),
-    effect.none(),
-  )
+    )
+
+  let fx = case tab {
+    UsersTab ->
+      rsvp.get("/api/users", rsvp.expect_json(users_decoder(), FetchedUsers))
+    GeneralTab -> effect.none()
+  }
+
+  #(model, fx)
 }
 
 pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    ClickedTab(GeneralTab) -> #(
-      Model(..model, active_tab: GeneralTab),
-      effect.none(),
-    )
-    ClickedTab(UsersTab) -> {
-      let fetch_users_effect =
-        rsvp.get("/api/users", rsvp.expect_json(users_decoder(), FetchedUsers))
-      #(Model(..model, active_tab: UsersTab), fetch_users_effect)
+    ClickedTab(target_tab) -> {
+      let path = case target_tab {
+        GeneralTab -> "/admin/general"
+        UsersTab -> "/admin/users"
+      }
+      let next_model = Model(..model, active_tab: target_tab)
+      let fx = case target_tab {
+        UsersTab ->
+          effect.batch([
+            modem.push(path, None, None),
+            rsvp.get(
+              "/api/users",
+              rsvp.expect_json(users_decoder(), FetchedUsers),
+            ),
+          ])
+        _ -> modem.push(path, None, None)
+      }
+      #(next_model, fx)
     }
     FetchedUsers(Ok(users)) -> #(Model(..model, users:), effect.none())
     FetchedUsers(Error(_)) -> #(model, effect.none())
