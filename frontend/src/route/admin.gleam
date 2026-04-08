@@ -17,15 +17,22 @@ import modem
 import rsvp
 
 pub type User {
-  User(id: Int, email: String, created_at: String, updated_at: String)
+  User(
+    id: Int,
+    username: String,
+    email: String,
+    created_at: String,
+    updated_at: String,
+  )
 }
 
 fn user_decoder() -> decode.Decoder(User) {
   use id <- decode.field("id", decode.int)
+  use username <- decode.field("username", decode.string)
   use email <- decode.field("email", decode.string)
   use created_at <- decode.field("created_at", decode.string)
   use updated_at <- decode.field("updated_at", decode.string)
-  decode.success(User(id:, email:, created_at:, updated_at:))
+  decode.success(User(id:, username:, email:, created_at:, updated_at:))
 }
 
 fn users_decoder() -> decode.Decoder(List(User)) {
@@ -44,19 +51,25 @@ pub type Dialog {
 }
 
 pub type AddUserForm {
-  AddUserForm(email: String, password: String, error: String)
+  AddUserForm(username: String, email: String, password: String, error: String)
 }
 
 pub type EditUserForm {
-  EditUserForm(id: Int, email: String, password: String, error: String)
+  EditUserForm(
+    id: Int,
+    username: String,
+    email: String,
+    password: String,
+    error: String,
+  )
 }
 
 fn default_add_user_form() -> AddUserForm {
-  AddUserForm(email: "", password: "", error: "")
+  AddUserForm(username: "", email: "", password: "", error: "")
 }
 
 fn default_edit_user_form() -> EditUserForm {
-  EditUserForm(id: 0, email: "", password: "", error: "")
+  EditUserForm(id: 0, username: "", email: "", password: "", error: "")
 }
 
 fn dialog_to_id(dialog: Dialog) -> String {
@@ -87,10 +100,12 @@ pub type Msg {
   ConfirmedDialog
   DeleteUserRequestSent(Int)
   DeletedUser(Result(Int, rsvp.Error))
+  UpdatedAddUserUsername(String)
   UpdatedAddUserEmail(String)
   UpdatedAddUserPassword(String)
   SubmittedAddUser
   AddedUser(Result(User, rsvp.Error))
+  UpdatedEditUserUsername(String)
   UpdatedEditUserEmail(String)
   UpdatedEditUserPassword(String)
   SubmittedEditUser
@@ -132,6 +147,7 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
         ..model,
         edit_user_form: EditUserForm(
           id: user.id,
+          username: user.username,
           email: user.email,
           password: "",
           error: "",
@@ -181,6 +197,10 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
     DeletedUser(Error(e)) -> {
       #(model, effect.none())
     }
+    UpdatedAddUserUsername(username) -> {
+      let form = AddUserForm(..model.add_user_form, username:)
+      #(Model(..model, add_user_form: form), effect.none())
+    }
     UpdatedAddUserEmail(email) -> {
       let form = AddUserForm(..model.add_user_form, email:)
       #(Model(..model, add_user_form: form), effect.none())
@@ -194,6 +214,7 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
         rsvp.post(
           "/api/users",
           json.object([
+            #("username", json.string(model.add_user_form.username)),
             #("email", json.string(model.add_user_form.email)),
             #("password", json.string(model.add_user_form.password)),
           ]),
@@ -215,6 +236,10 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
         AddUserForm(..model.add_user_form, error: "Failed to add user.")
       #(Model(..model, add_user_form: form), effect.none())
     }
+    UpdatedEditUserUsername(username) -> {
+      let form = EditUserForm(..model.edit_user_form, username:)
+      #(Model(..model, edit_user_form: form), effect.none())
+    }
     UpdatedEditUserEmail(email) -> {
       let form = EditUserForm(..model.edit_user_form, email:)
       #(Model(..model, edit_user_form: form), effect.none())
@@ -230,6 +255,10 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
       let payload_fields = case model.edit_user_form.password {
         "" -> payload_fields
         pw -> [#("password", json.string(pw)), ..payload_fields]
+      }
+      let payload_fields = case model.edit_user_form.username {
+        "" -> payload_fields
+        username -> [#("username", json.string(username)), ..payload_fields]
       }
       let fx =
         rsvp.patch(
@@ -333,7 +362,14 @@ fn view_users_tab(model: Model) -> Element(Msg) {
       components.card_root(
         [attribute.class("flex justify-between items-center")],
         [
-          html.span([], [element.text(user.email)]),
+          html.div([attribute.class("flex flex-col")], [
+            html.span([attribute.class("font-medium")], [
+              element.text(user.username),
+            ]),
+            html.span([attribute.class("text-sm text-muted-foreground")], [
+              element.text(user.email),
+            ]),
+          ]),
           html.span([attribute.class("flex gap-2")], [
             components.button(
               variant: ButtonOutline,
@@ -404,6 +440,15 @@ fn view_add_user_dialog(model: Model) -> Element(Msg) {
                   [element.text(msg)],
                 )
             },
+            components.form_input(
+              label: "Username",
+              id: "username",
+              name: "username",
+              attributes: [
+                attribute.value(model.add_user_form.username),
+                event.on_input(UpdatedAddUserUsername),
+              ],
+            ),
             components.form_input(
               label: "Email Address",
               id: "email",
@@ -477,6 +522,15 @@ fn view_edit_user_dialog(model: Model) -> Element(Msg) {
                   [element.text(msg)],
                 )
             },
+            components.form_input(
+              label: "Username",
+              id: "username",
+              name: "username",
+              attributes: [
+                attribute.value(model.edit_user_form.username),
+                event.on_input(UpdatedEditUserUsername),
+              ],
+            ),
             components.form_input(
               label: "Email Address",
               id: "email",

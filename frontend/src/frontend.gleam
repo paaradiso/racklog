@@ -24,7 +24,7 @@ pub fn main() -> Nil {
 }
 
 type User {
-  User(id: Int, email: String)
+  User(id: Int, username: String, email: String)
 }
 
 type Path {
@@ -108,8 +108,9 @@ fn fetch_current_user() -> Effect(Msg) {
 
 fn decode_user() -> decode.Decoder(User) {
   use id <- decode.field("id", decode.int)
+  use username <- decode.field("username", decode.string)
   use email <- decode.field("email", decode.string)
-  decode.success(User(id:, email:))
+  decode.success(User(id:, username:, email:))
 }
 
 fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
@@ -221,7 +222,7 @@ fn render_header(model: Model) -> Element(Msg) {
               case model.user {
                 option.Some(user) ->
                   html.span([], [
-                    element.text("User #" <> int.to_string(user.id)),
+                    element.text(user.username),
                   ])
                 option.None ->
                   element.fragment([
