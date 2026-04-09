@@ -1,1 +1,0 @@
-DELETE FROM exercises WHERE id = $1 RETURNING id
