@@ -233,7 +233,7 @@ pub fn delete_user_by_id(_req: Request, ctx: Context, id: String) -> Response {
   }
 }
 
-pub type UserUpdate {
+pub type UpdateUserPayload {
   UpdateUser(
     username: String,
     email: String,
@@ -242,7 +242,7 @@ pub type UserUpdate {
   )
 }
 
-fn update_user_decoder() -> decode.Decoder(UserUpdate) {
+fn update_user_payload_decoder() -> decode.Decoder(UpdateUserPayload) {
   use username <- decode.optional_field("username", "", decode.string)
   use email <- decode.optional_field("email", "", decode.string)
   use password <- decode.optional_field("password", "", decode.string)
@@ -265,7 +265,7 @@ pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
     )
 
     use payload <- result.try(
-      decode.run(json, update_user_decoder())
+      decode.run(json, update_user_payload_decoder())
       |> result.map_error(fn(_) { wisp.unprocessable_content() }),
     )
 
