@@ -100,9 +100,9 @@ pub fn main() {
     auth_sql.create_user(
       connection,
       "admin",
-      "test@example.com",
+      "admin@example.com",
       auth.hash_password("abc123abc"),
-      auth_sql.User,
+      auth_sql.Admin,
     )
   {
     Ok(_) -> io.println("Created user")
