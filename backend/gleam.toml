@@ -27,6 +27,8 @@ argus = ">= 1.0.3 and < 2.0.0"
 youid = ">= 1.6.0 and < 2.0.0"
 dot_env = ">= 1.2.0 and < 2.0.0"
 
+shared = { path = "../shared" }
+
 [dev_dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
 cigogne = ">= 5.0.5 and < 6.0.0"
