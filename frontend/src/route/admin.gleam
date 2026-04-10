@@ -5,6 +5,9 @@ import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/string
+import gleam/time/duration
+import gleam/time/timestamp
 import lucide_lustre
 import lustre/attribute
 import lustre/effect.{type Effect}
@@ -12,7 +15,7 @@ import lustre/element.{type Element}
 import lustre/element/html
 import lustre/event
 import modem
-import racklog/user.{type AppUserRole, type UserDto, UserDto, UserRole}
+import racklog/user.{type AppUserRole, type UserDto, AdminRole, UserRole}
 import rsvp
 
 pub type Tab {
@@ -39,7 +42,7 @@ pub type AddUserForm {
     username: String,
     email: String,
     password: String,
-    user_role: AppUserRole,
+    role: AppUserRole,
     error: String,
   )
 }
@@ -50,19 +53,13 @@ pub type EditUserForm {
     username: String,
     email: String,
     password: String,
-    user_role: AppUserRole,
+    role: AppUserRole,
     error: String,
   )
 }
 
 fn default_add_user_form() -> AddUserForm {
-  AddUserForm(
-    username: "",
-    email: "",
-    password: "",
-    user_role: UserRole,
-    error: "",
-  )
+  AddUserForm(username: "", email: "", password: "", role: UserRole, error: "")
 }
 
 fn default_edit_user_form() -> EditUserForm {
@@ -71,7 +68,7 @@ fn default_edit_user_form() -> EditUserForm {
     username: "",
     email: "",
     password: "",
-    user_role: UserRole,
+    role: UserRole,
     error: "",
   )
 }
@@ -107,11 +104,13 @@ pub type Msg {
   UpdatedAddUserUsername(String)
   UpdatedAddUserEmail(String)
   UpdatedAddUserPassword(String)
+  UpdatedAddUserRole(AppUserRole)
   SubmittedAddUser
   AddedUser(Result(UserDto, rsvp.Error))
   UpdatedEditUserUsername(String)
   UpdatedEditUserEmail(String)
   UpdatedEditUserPassword(String)
+  UpdatedEditUserRole(AppUserRole)
   SubmittedEditUser
   EditedUser(Result(UserDto, rsvp.Error))
 }
@@ -177,7 +176,7 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
           username: user.username,
           email: user.email,
           password: "",
-          user_role: user.role,
+          role: user.role,
           error: "",
         ),
       ),
@@ -237,6 +236,10 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
       let form = AddUserForm(..model.add_user_form, password:)
       #(Model(..model, add_user_form: form), effect.none())
     }
+    UpdatedAddUserRole(role) -> {
+      let form = AddUserForm(..model.add_user_form, role:)
+      #(Model(..model, add_user_form: form), effect.none())
+    }
     SubmittedAddUser -> {
       let fx =
         rsvp.post(
@@ -247,7 +250,7 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
             #("password", json.string(model.add_user_form.password)),
             #(
               "user_role",
-              json.string(user.role_to_string(model.add_user_form.user_role)),
+              json.string(user.role_to_string(model.add_user_form.role)),
             ),
           ]),
           rsvp.expect_json(user.decoder(), AddedUser),
@@ -280,12 +283,16 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
       let form = EditUserForm(..model.edit_user_form, password:)
       #(Model(..model, edit_user_form: form), effect.none())
     }
+    UpdatedEditUserRole(role) -> {
+      let form = EditUserForm(..model.edit_user_form, role:)
+      #(Model(..model, edit_user_form: form), effect.none())
+    }
     SubmittedEditUser -> {
       let payload_fields = [
         #("email", json.string(model.edit_user_form.email)),
         #(
           "user_role",
-          json.string(user.role_to_string(model.edit_user_form.user_role)),
+          json.string(user.role_to_string(model.edit_user_form.role)),
         ),
       ]
       let payload_fields = case model.edit_user_form.password {
@@ -390,61 +397,106 @@ fn view_users_tab(model: Model) -> Element(Msg) {
       variant: ButtonOutline,
       href: "",
       attributes: [
-        attribute.class("w-min text-nowrap"),
+        attribute.class("mb-4 w-min text-nowrap"),
         event.on_click(OpenedAddUserDialog),
         ..dialog.open_for(dialog_to_id(AddUserDialog))
       ],
       children: [element.text("Add User")],
     ),
     ..list.map(model.users, fn(user) {
-      components.card_root(
-        [attribute.class("flex justify-between items-center")],
-        [
-          html.div([attribute.class("flex flex-col")], [
-            html.span([attribute.class("font-medium")], [
-              element.text(user.username),
-            ]),
-            html.span([attribute.class("text-sm text-muted-foreground")], [
-              element.text(user.email),
-            ]),
-          ]),
-          html.span([attribute.class("flex gap-2")], [
-            components.button(
-              variant: ButtonOutline,
-              href: "",
-              attributes: [
-                attribute.class(
-                  "flex justify-center items-center h-10 py-0! px-4!",
+      components.card_root([attribute.class("w-full")], [
+        html.div(
+          [
+            attribute.class(
+              "grid grid-cols-1 gap-4 items-center lg:grid-cols-12",
+            ),
+          ],
+          [
+            html.div(
+              [attribute.class("flex overflow-hidden flex-col lg:col-span-3")],
+              [
+                html.span([attribute.class("font-medium truncate")], [
+                  element.text(user.username),
+                ]),
+                html.span(
+                  [attribute.class("text-sm text-muted-foreground truncate")],
+                  [
+                    element.text(user.email),
+                  ],
                 ),
-                event.on_click(OpenedEditUserDialog(user)),
-                ..dialog.open_for(dialog_to_id(EditUserDialog))
-              ],
-              children: [
-                lucide_lustre.pencil([attribute.class("size-4")]),
-                element.text("Edit"),
               ],
             ),
-            components.button(
-              variant: ButtonOutline,
-              href: "",
-              attributes: [
-                attribute.class(
-                  "flex justify-center items-center h-10 py-0! px-4!",
-                ),
-                event.on_click(OpenedConfirmDialog(
-                  message: "This user will be permanently deleted.",
-                  on_confirm: DeleteUserRequestSent(user.id),
-                )),
-                ..dialog.open_for("confirm")
-              ],
-              children: [
-                lucide_lustre.trash_2([attribute.class("size-4")]),
-                element.text("Delete"),
-              ],
-            ),
-          ]),
-        ],
-      )
+
+            html.div([attribute.class("lg:col-span-2")], [
+              view_role_badge(user.role),
+            ]),
+
+            html.div([attribute.class("flex flex-col lg:col-span-2")], [
+              html.span(
+                [
+                  attribute.class(
+                    "text-xs tracking-wider uppercase text-muted-foreground",
+                  ),
+                ],
+                [element.text("Joined")],
+              ),
+              html.span([attribute.class("text-sm")], [
+                element.text(format_timestamp(user.created_at)),
+              ]),
+            ]),
+
+            html.div([attribute.class("flex flex-col lg:col-span-2")], [
+              html.span(
+                [
+                  attribute.class(
+                    "text-xs tracking-wider uppercase text-muted-foreground",
+                  ),
+                ],
+                [element.text("Updated")],
+              ),
+              html.span([attribute.class("text-sm")], [
+                element.text(format_timestamp(user.updated_at)),
+              ]),
+            ]),
+
+            html.div([attribute.class("flex gap-2 justify-end lg:col-span-3")], [
+              components.button(
+                variant: ButtonOutline,
+                href: "",
+                attributes: [
+                  attribute.class(
+                    "flex justify-center items-center h-10 py-0! px-4!",
+                  ),
+                  event.on_click(OpenedEditUserDialog(user)),
+                  ..dialog.open_for(dialog_to_id(EditUserDialog))
+                ],
+                children: [
+                  lucide_lustre.pencil([attribute.class("mr-2 size-4")]),
+                  element.text("Edit"),
+                ],
+              ),
+              components.button(
+                variant: ButtonOutline,
+                href: "",
+                attributes: [
+                  attribute.class(
+                    "flex justify-center items-center h-10 py-0! px-4! text-destructive hover:text-destructive hover:bg-destructive/10",
+                  ),
+                  event.on_click(OpenedConfirmDialog(
+                    message: "This user will be permanently deleted.",
+                    on_confirm: DeleteUserRequestSent(user.id),
+                  )),
+                  ..dialog.open_for("confirm")
+                ],
+                children: [
+                  lucide_lustre.trash_2([attribute.class("mr-2 size-4")]),
+                  element.text("Delete"),
+                ],
+              ),
+            ]),
+          ],
+        ),
+      ])
     })
   ])
 }
@@ -515,8 +567,17 @@ fn view_add_user_dialog(model: Model) -> Element(Msg) {
                   attribute.class(
                     "py-2 px-3 w-full rounded-md border focus:border-transparent focus:ring-2 focus:outline-none border-input-border placeholder:text-muted-foreground focus:ring-ring",
                   ),
+                  event.on_change(fn(value) {
+                    case value {
+                      "Admin" -> UpdatedAddUserRole(AdminRole)
+                      _ -> UpdatedAddUserRole(UserRole)
+                    }
+                  }),
                 ],
-                [html.option([], "User"), html.option([], "Admin")],
+                [
+                  html.option([], "User"),
+                  html.option([], "Admin"),
+                ],
               ),
             ]),
           ]),
@@ -593,6 +654,39 @@ fn view_edit_user_dialog(model: Model) -> Element(Msg) {
                 event.on_input(UpdatedEditUserPassword),
               ],
             ),
+            html.div([], [
+              html.label(
+                [
+                  attribute.for("edit_user_select"),
+                  attribute.class(
+                    "block mb-1 text-sm font-medium text-secondary-foreground",
+                  ),
+                ],
+                [element.text("Role")],
+              ),
+              html.select(
+                [
+                  attribute.id("edit_user_select"),
+                  attribute.class(
+                    "py-2 px-3 w-full rounded-md border focus:border-transparent focus:ring-2 focus:outline-none border-input-border placeholder:text-muted-foreground focus:ring-ring",
+                  ),
+                  attribute.value(case model.edit_user_form.role {
+                    AdminRole -> "Admin"
+                    UserRole -> "User"
+                  }),
+                  event.on_change(fn(value) {
+                    case value {
+                      "Admin" -> UpdatedEditUserRole(AdminRole)
+                      _ -> UpdatedEditUserRole(UserRole)
+                    }
+                  }),
+                ],
+                [
+                  html.option([], "User"),
+                  html.option([], "Admin"),
+                ],
+              ),
+            ]),
           ]),
         ],
       ),
@@ -646,6 +740,36 @@ fn view_confirm_dialog(model: Model) -> Element(Msg) {
       ),
     ]),
   ])
+}
+
+fn view_role_badge(role: AppUserRole) -> Element(Msg) {
+  let #(label, class) = case role {
+    user.AdminRole -> #(
+      "Admin",
+      "bg-primary-background-subtle text-primary-foreground border-primary/30",
+    )
+    user.UserRole -> #(
+      "User",
+      "bg-secondary text-secondary-foreground border-border",
+    )
+  }
+
+  html.span(
+    [
+      attribute.classes([
+        #("py-0.5 px-2.5 w-max text-xs font-semibold rounded-full border", True),
+        #(class, True),
+      ]),
+    ],
+    [element.text(label)],
+  )
+}
+
+fn format_timestamp(ts: timestamp.Timestamp) -> String {
+  timestamp.to_rfc3339(ts, duration.seconds(0))
+  |> string.replace(each: "T", with: " ")
+  |> string.replace(each: "Z", with: "")
+  |> string.drop_end(7)
 }
 
 fn close_dialog(id: String) -> Effect(Msg) {
