@@ -12,8 +12,8 @@ import web.{type Context}
 import wisp.{type Request, type Response}
 import youid/uuid
 
-pub type User {
-  User(
+pub type CreateUserPayload {
+  CreateUserPayload(
     username: String,
     email: String,
     password: String,
@@ -59,12 +59,12 @@ fn user_credentials_decoder() -> decode.Decoder(#(String, String)) {
   decode.success(#(email, password))
 }
 
-fn user_details_decoder() -> decode.Decoder(User) {
+fn create_user_payload_decoder() -> decode.Decoder(CreateUserPayload) {
   use username <- decode.field("username", decode.string)
   use email <- decode.field("email", decode.string)
   use password <- decode.field("password", decode.string)
   use user_role <- decode.field("user_role", user.role_decoder())
-  decode.success(User(username:, email:, password:, user_role:))
+  decode.success(CreateUserPayload(username:, email:, password:, user_role:))
 }
 
 pub fn hash_password(password password: String) -> String {
@@ -130,7 +130,7 @@ pub fn create_user(req: Request, ctx: Context) -> Response {
 
   let create_user_result = {
     use user_details <- result.try(
-      decode.run(json, user_details_decoder())
+      decode.run(json, create_user_payload_decoder())
       |> result.map_error(fn(_) { wisp.unprocessable_content() }),
     )
 
