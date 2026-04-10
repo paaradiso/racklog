@@ -29,6 +29,7 @@ packages = [
   { name = "lustre", version = "5.6.0", build_tools = ["gleam"], requirements = ["gleam_erlang", "gleam_json", "gleam_otp", "gleam_stdlib", "houdini"], otp_app = "lustre", source = "hex", outer_checksum = "EE558CD4DB9F09FCC16417ADF0183A3C2DAC3E4B21ED3AC0CAE859792AB810CA" },
   { name = "modem", version = "2.1.2", build_tools = ["gleam"], requirements = ["gleam_stdlib", "lustre"], otp_app = "modem", source = "hex", outer_checksum = "3F9682EBCBF4D26045F1038A7507E8C7967E49D43F9CA6BA68EF0C971B195A7F" },
   { name = "rsvp", version = "1.2.0", build_tools = ["gleam"], requirements = ["gleam_erlang", "gleam_fetch", "gleam_http", "gleam_httpc", "gleam_javascript", "gleam_json", "gleam_stdlib", "lustre"], otp_app = "rsvp", source = "hex", outer_checksum = "40F9E0E662FF258E10C7041A9591261FE802D56625FB444B91510969644F7722" },
+  { name = "shared", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], source = "local", path = "../shared" },
   { name = "simplifile", version = "2.4.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_stdlib"], otp_app = "simplifile", source = "hex", outer_checksum = "7C18AFA4FED0B4CE1FA5B0B4BAC1FA1744427054EA993565F6F3F82E5453170D" },
   { name = "splitter", version = "1.2.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "splitter", source = "hex", outer_checksum = "3DFD6B6C49E61EDAF6F7B27A42054A17CFF6CA2135FF553D0CB61C234D281DD0" },
   { name = "tom", version = "2.0.2", build_tools = ["gleam"], requirements = ["gleam_stdlib", "gleam_time"], otp_app = "tom", source = "hex", outer_checksum = "234A842F3D087D35737483F5DFB6DE9839E3366EF0CAF8726D2D094210227670" },
@@ -45,3 +46,4 @@ lucide_lustre = { version = ">= 2.0.3 and < 3.0.0" }
 lustre = { version = ">= 5.6.0 and < 6.0.0" }
 modem = { version = ">= 2.1.2 and < 3.0.0" }
 rsvp = { version = ">= 1.2.0 and < 2.0.0" }
+shared = { path = "../shared" }

@@ -1,7 +1,6 @@
 import components.{ButtonDanger, ButtonOutline, ButtonPrimary, ButtonSecondary}
 import glaze/oat/dialog
 import glaze/oat/sidebar
-import gleam/dynamic/decode
 import gleam/int
 import gleam/json
 import gleam/list
@@ -13,60 +12,8 @@ import lustre/element.{type Element}
 import lustre/element/html
 import lustre/event
 import modem
+import racklog/user.{type AppUserRole, type UserDto, UserDto, UserRole}
 import rsvp
-
-pub type AppUserRole {
-  UserRole
-  AdminRole
-}
-
-pub type User {
-  User(
-    id: Int,
-    username: String,
-    email: String,
-    user_role: AppUserRole,
-    created_at: String,
-    updated_at: String,
-  )
-}
-
-fn user_role_to_string(user_role: AppUserRole) -> String {
-  case user_role {
-    AdminRole -> "admin"
-    UserRole -> "user"
-  }
-}
-
-fn decode_role() -> decode.Decoder(AppUserRole) {
-  use role_str <- decode.then(decode.string)
-  case role_str {
-    "admin" -> decode.success(AdminRole)
-    "user" -> decode.success(UserRole)
-    _ -> decode.failure(UserRole, "admin or user")
-  }
-}
-
-fn user_decoder() -> decode.Decoder(User) {
-  use id <- decode.field("id", decode.int)
-  use username <- decode.field("username", decode.string)
-  use email <- decode.field("email", decode.string)
-  use user_role <- decode.field("user_role", decode_role())
-  use created_at <- decode.field("created_at", decode.string)
-  use updated_at <- decode.field("updated_at", decode.string)
-  decode.success(User(
-    id:,
-    username:,
-    email:,
-    user_role:,
-    created_at:,
-    updated_at:,
-  ))
-}
-
-fn users_decoder() -> decode.Decoder(List(User)) {
-  decode.list(user_decoder())
-}
 
 pub type Tab {
   GeneralTab
@@ -140,7 +87,7 @@ fn dialog_to_id(dialog: Dialog) -> String {
 pub type Model {
   Model(
     active_tab: Tab,
-    users: List(User),
+    users: List(UserDto),
     add_user_form: AddUserForm,
     edit_user_form: EditUserForm,
     confirm_dialog: Option(Dialog),
@@ -149,9 +96,9 @@ pub type Model {
 
 pub type Msg {
   ClickedTab(Tab)
-  FetchedUsers(Result(List(User), rsvp.Error))
+  FetchedUsers(Result(List(UserDto), rsvp.Error))
   OpenedAddUserDialog
-  OpenedEditUserDialog(User)
+  OpenedEditUserDialog(UserDto)
   OpenedConfirmDialog(message: String, on_confirm: Msg)
   ClosedConfirmDialog
   ConfirmedDialog
@@ -161,12 +108,12 @@ pub type Msg {
   UpdatedAddUserEmail(String)
   UpdatedAddUserPassword(String)
   SubmittedAddUser
-  AddedUser(Result(User, rsvp.Error))
+  AddedUser(Result(UserDto, rsvp.Error))
   UpdatedEditUserUsername(String)
   UpdatedEditUserEmail(String)
   UpdatedEditUserPassword(String)
   SubmittedEditUser
-  EditedUser(Result(User, rsvp.Error))
+  EditedUser(Result(UserDto, rsvp.Error))
 }
 
 pub fn init() -> #(Model, Effect(Msg)) {
@@ -185,7 +132,10 @@ pub fn init_with_tab(tab: Tab) -> #(Model, Effect(Msg)) {
 
   let fx = case tab {
     UsersTab ->
-      rsvp.get("/api/users", rsvp.expect_json(users_decoder(), FetchedUsers))
+      rsvp.get(
+        "/api/users",
+        rsvp.expect_json(user.list_decoder(), FetchedUsers),
+      )
     GeneralTab -> effect.none()
   }
 
@@ -206,7 +156,7 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
             modem.push(path, None, None),
             rsvp.get(
               "/api/users",
-              rsvp.expect_json(users_decoder(), FetchedUsers),
+              rsvp.expect_json(user.list_decoder(), FetchedUsers),
             ),
           ])
         _ -> modem.push(path, None, None)
@@ -227,7 +177,7 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
           username: user.username,
           email: user.email,
           password: "",
-          user_role: user.user_role,
+          user_role: user.role,
           error: "",
         ),
       ),
@@ -297,10 +247,10 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
             #("password", json.string(model.add_user_form.password)),
             #(
               "user_role",
-              json.string(user_role_to_string(model.add_user_form.user_role)),
+              json.string(user.role_to_string(model.add_user_form.user_role)),
             ),
           ]),
-          rsvp.expect_json(user_decoder(), AddedUser),
+          rsvp.expect_json(user.decoder(), AddedUser),
         )
 
       #(model, fx)
@@ -335,7 +285,7 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
         #("email", json.string(model.edit_user_form.email)),
         #(
           "user_role",
-          json.string(user_role_to_string(model.edit_user_form.user_role)),
+          json.string(user.role_to_string(model.edit_user_form.user_role)),
         ),
       ]
       let payload_fields = case model.edit_user_form.password {
@@ -350,7 +300,7 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
         rsvp.patch(
           "/api/users/" <> int.to_string(model.edit_user_form.id),
           json.object(payload_fields),
-          rsvp.expect_json(user_decoder(), EditedUser),
+          rsvp.expect_json(user.decoder(), EditedUser),
         )
 
       #(model, fx)

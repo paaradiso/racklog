@@ -1,5 +1,4 @@
 import components
-import gleam/dynamic/decode
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -10,6 +9,7 @@ import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
 import modem
+import racklog/user.{type UserDto}
 import route/admin
 import route/exercises
 import route/login
@@ -20,15 +20,6 @@ pub fn main() -> Nil {
   let app = lustre.application(init, update, view)
   let assert Ok(_) = lustre.start(app, "#app", Nil)
   Nil
-}
-
-type AppUserRole {
-  UserRole
-  AdminRole
-}
-
-type User {
-  User(id: Int, username: String, email: String, user_role: AppUserRole)
 }
 
 type Path {
@@ -49,12 +40,12 @@ type Route {
 }
 
 type Model {
-  Model(route: Route, user: Option(User))
+  Model(route: Route, user: Option(UserDto))
 }
 
 type Msg {
   UserNavigatedTo(Uri)
-  GotCurrentUser(Result(User, rsvp.Error))
+  GotCurrentUser(Result(UserDto, rsvp.Error))
   WeightTypesMsg(weight_types.Msg)
   ExercisesMsg(exercises.Msg)
   LoginMsg(login.Msg)
@@ -112,24 +103,7 @@ fn init(_) -> #(Model, Effect(Msg)) {
 }
 
 fn fetch_current_user() -> Effect(Msg) {
-  rsvp.get("/api/me", rsvp.expect_json(decode_user(), GotCurrentUser))
-}
-
-fn decode_role() -> decode.Decoder(AppUserRole) {
-  use role_str <- decode.then(decode.string)
-  case role_str {
-    "admin" -> decode.success(AdminRole)
-    "user" -> decode.success(UserRole)
-    _ -> decode.failure(UserRole, "admin or user")
-  }
-}
-
-fn decode_user() -> decode.Decoder(User) {
-  use id <- decode.field("id", decode.int)
-  use username <- decode.field("username", decode.string)
-  use email <- decode.field("email", decode.string)
-  use user_role <- decode.field("user_role", decode_role())
-  decode.success(User(id:, username:, email:, user_role:))
+  rsvp.get("/api/me", rsvp.expect_json(user.decoder(), GotCurrentUser))
 }
 
 fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
