@@ -21,6 +21,42 @@ pub type CreateUserPayload {
   )
 }
 
+fn create_user_payload_decoder() -> decode.Decoder(CreateUserPayload) {
+  use username <- decode.field("username", decode.string)
+  use email <- decode.field("email", decode.string)
+  use password <- decode.field("password", decode.string)
+  use user_role <- decode.field("user_role", user.role_decoder())
+  decode.success(CreateUserPayload(username:, email:, password:, user_role:))
+}
+
+pub type UpdateUserPayload {
+  UpdateUserPayload(
+    username: String,
+    email: String,
+    password: String,
+    user_role: Option(AppUserRole),
+  )
+}
+
+fn update_user_payload_decoder() -> decode.Decoder(UpdateUserPayload) {
+  use username <- decode.optional_field("username", "", decode.string)
+  use email <- decode.optional_field("email", "", decode.string)
+  use password <- decode.optional_field("password", "", decode.string)
+  use user_role <- decode.optional_field(
+    "user_role",
+    option.None,
+    decode.optional(user.role_decoder()),
+  )
+
+  decode.success(UpdateUserPayload(username:, email:, password:, user_role:))
+}
+
+fn user_credentials_decoder() -> decode.Decoder(#(String, String)) {
+  use email <- decode.field("email", decode.string)
+  use password <- decode.field("password", decode.string)
+  decode.success(#(email, password))
+}
+
 fn shared_role_to_sql_role(role: user.AppUserRole) -> sql.AppUserRole {
   case role {
     user.AdminRole -> sql.Admin
@@ -51,20 +87,6 @@ fn row_to_dto(
     created_at:,
     updated_at:,
   )
-}
-
-fn user_credentials_decoder() -> decode.Decoder(#(String, String)) {
-  use email <- decode.field("email", decode.string)
-  use password <- decode.field("password", decode.string)
-  decode.success(#(email, password))
-}
-
-fn create_user_payload_decoder() -> decode.Decoder(CreateUserPayload) {
-  use username <- decode.field("username", decode.string)
-  use email <- decode.field("email", decode.string)
-  use password <- decode.field("password", decode.string)
-  use user_role <- decode.field("user_role", user.role_decoder())
-  decode.success(CreateUserPayload(username:, email:, password:, user_role:))
 }
 
 pub fn hash_password(password password: String) -> String {
@@ -185,11 +207,15 @@ pub fn me(_req: Request, ctx: Context) -> Response {
         |> result.map_error(fn(_) { wisp.response(401) }),
       )
       Ok(
-        json.object([
-          #("id", json.int(user.id)),
-          #("username", json.string(user.username)),
-          #("email", json.string(user.email)),
-        ])
+        row_to_dto(
+          user.id,
+          user.username,
+          user.email,
+          user.user_role,
+          user.created_at,
+          user.updated_at,
+        )
+        |> user.to_json
         |> json.to_string
         |> wisp.json_response(200),
       )
@@ -231,28 +257,6 @@ pub fn delete_user_by_id(_req: Request, ctx: Context, id: String) -> Response {
       }
     }
   }
-}
-
-pub type UpdateUserPayload {
-  UpdateUser(
-    username: String,
-    email: String,
-    password: String,
-    user_role: Option(AppUserRole),
-  )
-}
-
-fn update_user_payload_decoder() -> decode.Decoder(UpdateUserPayload) {
-  use username <- decode.optional_field("username", "", decode.string)
-  use email <- decode.optional_field("email", "", decode.string)
-  use password <- decode.optional_field("password", "", decode.string)
-  use user_role <- decode.optional_field(
-    "user_role",
-    option.None,
-    decode.optional(user.role_decoder()),
-  )
-
-  decode.success(UpdateUser(username:, email:, password:, user_role:))
 }
 
 pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {

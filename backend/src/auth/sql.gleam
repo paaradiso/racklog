@@ -150,8 +150,11 @@ WHERE id = $1;
 pub type GetCurrentUserRow {
   GetCurrentUserRow(
     id: Int,
-    username: String,
     email: String,
+    hashed_password: String,
+    created_at: Timestamp,
+    updated_at: Timestamp,
+    username: String,
     user_role: AppUserRole,
   )
 }
@@ -168,17 +171,25 @@ pub fn get_current_user(
 ) -> Result(pog.Returned(GetCurrentUserRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
-    use username <- decode.field(1, decode.string)
-    use email <- decode.field(2, decode.string)
-    use user_role <- decode.field(3, app_user_role_decoder())
-    decode.success(GetCurrentUserRow(id:, username:, email:, user_role:))
+    use email <- decode.field(1, decode.string)
+    use hashed_password <- decode.field(2, decode.string)
+    use created_at <- decode.field(3, pog.timestamp_decoder())
+    use updated_at <- decode.field(4, pog.timestamp_decoder())
+    use username <- decode.field(5, decode.string)
+    use user_role <- decode.field(6, app_user_role_decoder())
+    decode.success(GetCurrentUserRow(
+      id:,
+      email:,
+      hashed_password:,
+      created_at:,
+      updated_at:,
+      username:,
+      user_role:,
+    ))
   }
 
   "SELECT
-    id,
-    username,
-    email,
-    user_role
+    *
 FROM
     app_user
 WHERE
