@@ -1,4 +1,5 @@
 todo:
+- [ ] better error handling and responses
 - [ ] tables
     - [ ] `weight_type` -> `equipment`
     - [ ] add `preferred_unit` to `app_user`
