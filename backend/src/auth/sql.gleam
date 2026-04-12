@@ -70,6 +70,7 @@ pub type CreateUserRow {
     updated_at: Timestamp,
     username: String,
     user_role: AppUserRole,
+    preferred_unit: PreferredUnit,
   )
 }
 
@@ -94,6 +95,7 @@ pub fn create_user(
     use updated_at <- decode.field(4, pog.timestamp_decoder())
     use username <- decode.field(5, decode.string)
     use user_role <- decode.field(6, app_user_role_decoder())
+    use preferred_unit <- decode.field(7, preferred_unit_decoder())
     decode.success(CreateUserRow(
       id:,
       email:,
@@ -102,6 +104,7 @@ pub fn create_user(
       updated_at:,
       username:,
       user_role:,
+      preferred_unit:,
     ))
   }
 
@@ -156,6 +159,7 @@ pub type GetCurrentUserRow {
     updated_at: Timestamp,
     username: String,
     user_role: AppUserRole,
+    preferred_unit: PreferredUnit,
   )
 }
 
@@ -177,6 +181,7 @@ pub fn get_current_user(
     use updated_at <- decode.field(4, pog.timestamp_decoder())
     use username <- decode.field(5, decode.string)
     use user_role <- decode.field(6, app_user_role_decoder())
+    use preferred_unit <- decode.field(7, preferred_unit_decoder())
     decode.success(GetCurrentUserRow(
       id:,
       email:,
@@ -185,6 +190,7 @@ pub fn get_current_user(
       updated_at:,
       username:,
       user_role:,
+      preferred_unit:,
     ))
   }
 
@@ -265,6 +271,7 @@ pub type GetUserByEmailRow {
     updated_at: Timestamp,
     username: String,
     user_role: AppUserRole,
+    preferred_unit: PreferredUnit,
   )
 }
 
@@ -286,6 +293,7 @@ pub fn get_user_by_email(
     use updated_at <- decode.field(4, pog.timestamp_decoder())
     use username <- decode.field(5, decode.string)
     use user_role <- decode.field(6, app_user_role_decoder())
+    use preferred_unit <- decode.field(7, preferred_unit_decoder())
     decode.success(GetUserByEmailRow(
       id:,
       email:,
@@ -294,6 +302,7 @@ pub fn get_user_by_email(
       updated_at:,
       username:,
       user_role:,
+      preferred_unit:,
     ))
   }
 
@@ -326,6 +335,7 @@ pub type ListUsersRow {
     updated_at: Timestamp,
     username: String,
     user_role: AppUserRole,
+    preferred_unit: PreferredUnit,
   )
 }
 
@@ -346,6 +356,7 @@ pub fn list_users(
     use updated_at <- decode.field(4, pog.timestamp_decoder())
     use username <- decode.field(5, decode.string)
     use user_role <- decode.field(6, app_user_role_decoder())
+    use preferred_unit <- decode.field(7, preferred_unit_decoder())
     decode.success(ListUsersRow(
       id:,
       email:,
@@ -354,6 +365,7 @@ pub fn list_users(
       updated_at:,
       username:,
       user_role:,
+      preferred_unit:,
     ))
   }
 
@@ -382,6 +394,7 @@ pub type UpdateUserByIdRow {
     updated_at: Timestamp,
     username: String,
     user_role: AppUserRole,
+    preferred_unit: PreferredUnit,
   )
 }
 
@@ -407,6 +420,7 @@ pub fn update_user_by_id(
     use updated_at <- decode.field(4, pog.timestamp_decoder())
     use username <- decode.field(5, decode.string)
     use user_role <- decode.field(6, app_user_role_decoder())
+    use preferred_unit <- decode.field(7, preferred_unit_decoder())
     decode.success(UpdateUserByIdRow(
       id:,
       email:,
@@ -415,6 +429,7 @@ pub fn update_user_by_id(
       updated_at:,
       username:,
       user_role:,
+      preferred_unit:,
     ))
   }
 
@@ -424,7 +439,8 @@ SET
     username = COALESCE(NULLIF ($1, ''), username),
     email = COALESCE(NULLIF ($2, ''), email),
     hashed_password = COALESCE(NULLIF ($3, ''), hashed_password),
-    user_role = COALESCE(NULLIF ($4::text, '')::app_user_role, user_role)
+    user_role = COALESCE(NULLIF ($4::text, '')::app_user_role, user_role),
+    preferred_unit = COALESCE(NULLIF ($5::text, '')::preferred_unit, preferred_unit)
 WHERE
     id = $5
 RETURNING
@@ -468,4 +484,21 @@ fn app_user_role_encoder(app_user_role) -> pog.Value {
     User -> "user"
   }
   |> pog.text
+}/// Corresponds to the Postgres `preferred_unit` enum.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type PreferredUnit {
+  Lb
+  Kg
+}
+
+fn preferred_unit_decoder() -> decode.Decoder(PreferredUnit) {
+  use preferred_unit <- decode.then(decode.string)
+  case preferred_unit {
+    "lb" -> decode.success(Lb)
+    "kg" -> decode.success(Kg)
+    _ -> decode.failure(Lb, "PreferredUnit")
+  }
 }

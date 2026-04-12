@@ -7,7 +7,7 @@ import gleam/list
 import gleam/option.{type Option}
 import gleam/result
 import gleam/time/timestamp
-import racklog/user.{type AppUserRole}
+import racklog/user.{type AppUserRole, type PreferredUnit}
 import web.{type Context}
 import wisp.{type Request, type Response}
 import youid/uuid
@@ -18,6 +18,7 @@ pub type CreateUserPayload {
     email: String,
     password: String,
     user_role: AppUserRole,
+    preferred_unit: PreferredUnit,
   )
 }
 
@@ -26,7 +27,17 @@ fn create_user_payload_decoder() -> decode.Decoder(CreateUserPayload) {
   use email <- decode.field("email", decode.string)
   use password <- decode.field("password", decode.string)
   use user_role <- decode.field("user_role", user.role_decoder())
-  decode.success(CreateUserPayload(username:, email:, password:, user_role:))
+  use preferred_unit <- decode.field(
+    "preferred_unit",
+    user.preferred_unit_decoder(),
+  )
+  decode.success(CreateUserPayload(
+    username:,
+    email:,
+    password:,
+    user_role:,
+    preferred_unit:,
+  ))
 }
 
 pub type UpdateUserPayload {
@@ -35,6 +46,7 @@ pub type UpdateUserPayload {
     email: String,
     password: String,
     user_role: Option(AppUserRole),
+    preferred_unit: Option(PreferredUnit),
   )
 }
 
@@ -47,8 +59,19 @@ fn update_user_payload_decoder() -> decode.Decoder(UpdateUserPayload) {
     option.None,
     decode.optional(user.role_decoder()),
   )
+  use preferred_unit <- decode.optional_field(
+    "preferred_unit",
+    option.None,
+    decode.optional(user.preferred_unit_decoder()),
+  )
 
-  decode.success(UpdateUserPayload(username:, email:, password:, user_role:))
+  decode.success(UpdateUserPayload(
+    username:,
+    email:,
+    password:,
+    user_role:,
+    preferred_unit:,
+  ))
 }
 
 fn user_credentials_decoder() -> decode.Decoder(#(String, String)) {
@@ -71,11 +94,21 @@ fn sql_role_to_shared_role(role: sql.AppUserRole) -> user.AppUserRole {
   }
 }
 
+fn sql_preferred_unit_to_shared_preferred_unit(
+  preferred_unit: sql.PreferredUnit,
+) -> user.PreferredUnit {
+  case preferred_unit {
+    sql.Kg -> user.Kg
+    sql.Lb -> user.Lb
+  }
+}
+
 fn row_to_dto(
   id: Int,
   username: String,
   email: String,
   role: sql.AppUserRole,
+  preferred_unit: sql.PreferredUnit,
   created_at: timestamp.Timestamp,
   updated_at: timestamp.Timestamp,
 ) -> user.UserDto {
@@ -84,6 +117,7 @@ fn row_to_dto(
     username:,
     email:,
     role: sql_role_to_shared_role(role),
+    preferred_unit: sql_preferred_unit_to_shared_preferred_unit(preferred_unit),
     created_at:,
     updated_at:,
   )
@@ -179,6 +213,7 @@ pub fn create_user(req: Request, ctx: Context) -> Response {
         user.username,
         user.email,
         user.user_role,
+        user.preferred_unit,
         user.created_at,
         user.updated_at,
       )
@@ -212,6 +247,7 @@ pub fn me(_req: Request, ctx: Context) -> Response {
           user.username,
           user.email,
           user.user_role,
+          user.preferred_unit,
           user.created_at,
           user.updated_at,
         )
@@ -234,6 +270,7 @@ pub fn list_users(_req: Request, ctx: Context) -> Response {
           row.username,
           row.email,
           row.user_role,
+          row.preferred_unit,
           row.created_at,
           row.updated_at,
         )
@@ -305,6 +342,7 @@ pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
         user.username,
         user.email,
         user.user_role,
+        user.preferred_unit,
         user.created_at,
         user.updated_at,
       )
