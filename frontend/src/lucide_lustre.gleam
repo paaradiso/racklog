@@ -74,3 +74,32 @@ pub fn triangle_alert(attributes: List(Attribute(a))) {
     ],
   )
 }
+
+pub fn settings(attributes: List(Attribute(a))) {
+  svg.svg(
+    [
+      attribute("stroke-linejoin", "round"),
+      attribute("stroke-linecap", "round"),
+      attribute("stroke-width", "2"),
+      attribute("stroke", "currentColor"),
+      attribute("fill", "none"),
+      attribute("viewBox", "0 0 24 24"),
+      attribute("height", "24"),
+      attribute("width", "24"),
+      ..attributes
+    ],
+    [
+      svg.path([
+        attribute(
+          "d",
+          "M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915",
+        ),
+      ]),
+      svg.circle([
+        attribute("r", "3"),
+        attribute("cy", "12"),
+        attribute("cx", "12"),
+      ]),
+    ],
+  )
+}

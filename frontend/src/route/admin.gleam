@@ -337,9 +337,9 @@ pub fn view(model: Model) -> List(Element(Msg)) {
   [
     sidebar.sidebar_always(
       html.div,
-      [attribute.class("flex overflow-hidden flex-row w-full h-full")],
+      [attribute.class("flex flex-row w-full h-full")],
       [
-        sidebar.aside([attribute.class("overflow-y-auto w-64 bg-card")], [
+        sidebar.aside([attribute.class("w-64 bg-card")], [
           sidebar.nav([attribute.class("flex flex-col p-0 text-md")], [
             view_sidebar_button(model.active_tab, GeneralTab, "General"),
             view_sidebar_button(model.active_tab, UsersTab, "Users"),
@@ -348,9 +348,7 @@ pub fn view(model: Model) -> List(Element(Msg)) {
 
         html.main(
           [
-            attribute.class(
-              "container overflow-y-auto flex-1 p-4 bg-background text-foreground",
-            ),
+            attribute.class("flex-1 p-4 bg-background text-foreground"),
           ],
           [
             case model.active_tab {
@@ -397,7 +395,7 @@ fn view_users_tab(model: Model) -> Element(Msg) {
       variant: ButtonOutline,
       href: "",
       attributes: [
-        attribute.class("mb-4 w-min text-nowrap"),
+        attribute.class("mb-2 w-min text-nowrap"),
         event.on_click(OpenedAddUserDialog),
         ..dialog.open_for(dialog_to_id(AddUserDialog))
       ],
@@ -407,31 +405,26 @@ fn view_users_tab(model: Model) -> Element(Msg) {
       components.card_root([attribute.class("w-full")], [
         html.div(
           [
-            attribute.class(
-              "grid grid-cols-1 gap-4 items-center lg:grid-cols-12",
-            ),
+            attribute.class("grid grid-cols-12 gap-4 items-center"),
           ],
           [
-            html.div(
-              [attribute.class("flex overflow-hidden flex-col lg:col-span-3")],
-              [
-                html.span([attribute.class("font-medium truncate")], [
-                  element.text(user.username),
-                ]),
-                html.span(
-                  [attribute.class("text-sm text-muted-foreground truncate")],
-                  [
-                    element.text(user.email),
-                  ],
-                ),
-              ],
-            ),
+            html.div([attribute.class("flex flex-col col-span-3")], [
+              html.span([attribute.class("font-medium truncate")], [
+                element.text(user.username),
+              ]),
+              html.span(
+                [attribute.class("text-sm text-muted-foreground truncate")],
+                [
+                  element.text(user.email),
+                ],
+              ),
+            ]),
 
-            html.div([attribute.class("lg:col-span-2")], [
+            html.div([attribute.class("col-span-2")], [
               view_role_badge(user.role),
             ]),
 
-            html.div([attribute.class("flex flex-col lg:col-span-2")], [
+            html.div([attribute.class("flex flex-col col-span-2")], [
               html.span(
                 [
                   attribute.class(
@@ -445,7 +438,7 @@ fn view_users_tab(model: Model) -> Element(Msg) {
               ]),
             ]),
 
-            html.div([attribute.class("flex flex-col lg:col-span-2")], [
+            html.div([attribute.class("flex flex-col col-span-2")], [
               html.span(
                 [
                   attribute.class(
@@ -459,7 +452,7 @@ fn view_users_tab(model: Model) -> Element(Msg) {
               ]),
             ]),
 
-            html.div([attribute.class("flex gap-2 justify-end lg:col-span-3")], [
+            html.div([attribute.class("flex col-span-3 gap-2 justify-end")], [
               components.button(
                 variant: ButtonOutline,
                 href: "",

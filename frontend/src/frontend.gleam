@@ -3,6 +3,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/uri.{type Uri}
+import lucide_lustre
 import lustre
 import lustre/attribute.{type Attribute}
 import lustre/effect.{type Effect}
@@ -67,14 +68,20 @@ fn uri_to_route(uri: Uri) -> #(Route, Effect(Msg)) {
       let #(model, fx) = login.init()
       #(Login(model), effect.map(fx, LoginMsg))
     }
-    ["admin"] -> {
-      let #(model, fx) = admin.init()
-      #(Admin(model), effect.map(fx, AdminMsg))
+    ["admin"] | ["admin", ""] -> {
+      #(Admin(admin.init().0), modem.replace("/admin/general", None, None))
     }
+
     ["admin", tab] -> {
-      let tab = admin.tab_name_to_tab(tab) |> option.unwrap(admin.GeneralTab)
-      let #(model, fx) = admin.init_with_tab(tab)
-      #(Admin(model), effect.map(fx, AdminMsg))
+      case admin.tab_name_to_tab(tab) {
+        Some(tab) -> {
+          let #(model, fx) = admin.init_with_tab(tab)
+          #(Admin(model), effect.map(fx, AdminMsg))
+        }
+        None -> {
+          #(Admin(admin.init().0), modem.replace("/admin/general", None, None))
+        }
+      }
     }
     _ -> #(NotFound(uri:), effect.none())
   }
@@ -214,7 +221,17 @@ fn render_header(model: Model) -> Element(Msg) {
             [
               case model.user {
                 option.Some(user) ->
-                  html.span([], [
+                  element.fragment([
+                    html.a(
+                      [
+                        href(AdminPath),
+
+                        attribute.title("Admin"),
+                      ],
+                      [
+                        lucide_lustre.settings([attribute.class("size-5")]),
+                      ],
+                    ),
                     element.text(user.username),
                   ])
                 option.None ->
