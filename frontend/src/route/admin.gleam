@@ -460,7 +460,7 @@ fn view_users_tab(model: Model) -> Element(Msg) {
             attribute.class("grid grid-cols-12 gap-4 items-center"),
           ],
           [
-            html.div([attribute.class("flex flex-col col-span-3")], [
+            html.div([attribute.class("flex flex-col col-span-2")], [
               html.span([attribute.class("font-medium truncate")], [
                 element.text(user.username),
               ]),
@@ -504,7 +504,21 @@ fn view_users_tab(model: Model) -> Element(Msg) {
               ]),
             ]),
 
-            html.div([attribute.class("flex col-span-3 gap-2 justify-end")], [
+            html.div([attribute.class("flex flex-col col-span-2")], [
+              html.span(
+                [
+                  attribute.class(
+                    "text-xs tracking-wider uppercase text-muted-foreground",
+                  ),
+                ],
+                [element.text("Preferred Unit")],
+              ),
+              html.span([attribute.class("text-sm")], [
+                element.text(user.preferred_unit_to_string(user.preferred_unit)),
+              ]),
+            ]),
+
+            html.div([attribute.class("flex col-span-2 gap-2 justify-end")], [
               components.button(
                 variant: ButtonOutline,
                 href: "",
