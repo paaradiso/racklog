@@ -12,9 +12,9 @@ import lustre/element/html
 import modem
 import racklog/user.{type UserDto}
 import route/admin
+import route/equipment
 import route/exercises
 import route/login
-import route/weight_types
 import rsvp
 
 pub fn main() -> Nil {
@@ -25,7 +25,7 @@ pub fn main() -> Nil {
 
 type Path {
   IndexPath
-  WeightTypesPath
+  EquipmentPath
   ExercisesPath
   LoginPath
   AdminPath
@@ -33,7 +33,7 @@ type Path {
 
 type Route {
   Index
-  WeightTypes(weight_types.Model)
+  Equipment(equipment.Model)
   Exercises(exercises.Model)
   Login(login.Model)
   Admin(admin.Model)
@@ -47,7 +47,7 @@ type Model {
 type Msg {
   UserNavigatedTo(Uri)
   GotCurrentUser(Result(UserDto, rsvp.Error))
-  WeightTypesMsg(weight_types.Msg)
+  EquipmentMsg(equipment.Msg)
   ExercisesMsg(exercises.Msg)
   LoginMsg(login.Msg)
   AdminMsg(admin.Msg)
@@ -56,9 +56,9 @@ type Msg {
 fn uri_to_route(uri: Uri) -> #(Route, Effect(Msg)) {
   case uri.path_segments(uri.path) {
     [] | [""] -> #(Index, effect.none())
-    ["weight_types"] -> {
-      let #(model, fx) = weight_types.init()
-      #(WeightTypes(model), effect.map(fx, WeightTypesMsg))
+    ["equipment"] -> {
+      let #(model, fx) = equipment.init()
+      #(Equipment(model), effect.map(fx, EquipmentMsg))
     }
     ["exercises"] -> {
       let #(model, fx) = exercises.init()
@@ -90,7 +90,7 @@ fn uri_to_route(uri: Uri) -> #(Route, Effect(Msg)) {
 fn href(path: Path) -> Attribute(msg) {
   let url = case path {
     IndexPath -> "/"
-    WeightTypesPath -> "/weight_types"
+    EquipmentPath -> "/equipment"
     ExercisesPath -> "/exercises"
     LoginPath -> "/login"
     AdminPath -> "/admin"
@@ -124,9 +124,9 @@ fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
       let #(route, fx) = uri_to_route(uri)
       #(Model(..model, route:), effect.batch([fx, fetch_current_user()]))
     }
-    WeightTypesMsg(route_msg), WeightTypes(route_model) -> {
-      let #(m, fx) = weight_types.update(route_model, route_msg)
-      #(Model(..model, route: WeightTypes(m)), effect.map(fx, WeightTypesMsg))
+    EquipmentMsg(route_msg), Equipment(route_model) -> {
+      let #(m, fx) = equipment.update(route_model, route_msg)
+      #(Model(..model, route: Equipment(m)), effect.map(fx, EquipmentMsg))
     }
     ExercisesMsg(route_msg), Exercises(route_model) -> {
       let #(m, fx) = exercises.update(route_model, route_msg)
@@ -157,7 +157,7 @@ fn view(model: Model) -> Element(Msg) {
         ],
         case model.route {
           Index -> [html.text("index")]
-          WeightTypes(m) -> view_route(m, weight_types.view, WeightTypesMsg)
+          Equipment(m) -> view_route(m, equipment.view, EquipmentMsg)
           Exercises(m) -> view_route(m, exercises.view, ExercisesMsg)
           Login(m) -> view_route(m, login.view, LoginMsg)
           Admin(m) -> view_route(m, admin.view, AdminMsg)
@@ -204,8 +204,8 @@ fn render_header(model: Model) -> Element(Msg) {
                 ],
               ),
 
-              components.link(attributes: [href(WeightTypesPath)], children: [
-                element.text("Weight Types"),
+              components.link(attributes: [href(EquipmentPath)], children: [
+                element.text("Equipment"),
               ]),
               components.link(attributes: [href(ExercisesPath)], children: [
                 element.text("Exercises"),

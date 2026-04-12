@@ -10,22 +10,22 @@ pub type Model {
 }
 
 pub type Msg {
-  FetchedWeightTypes(Result(List(String), rsvp.Error))
+  FetchedEquipment(Result(List(String), rsvp.Error))
 }
 
 pub fn init() -> #(Model, Effect(Msg)) {
   let effect =
     rsvp.get(
-      "/api/weight_types",
-      rsvp.expect_json(names_decoder(), FetchedWeightTypes),
+      "/api/equipment",
+      rsvp.expect_json(names_decoder(), FetchedEquipment),
     )
   #(Model(names: []), effect)
 }
 
 pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    FetchedWeightTypes(Ok(names)) -> #(Model(names: names), effect.none())
-    FetchedWeightTypes(Error(_)) -> #(model, effect.none())
+    FetchedEquipment(Ok(names)) -> #(Model(names: names), effect.none())
+    FetchedEquipment(Error(_)) -> #(model, effect.none())
   }
 }
 
