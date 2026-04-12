@@ -23,6 +23,7 @@ gleam_http = ">= 4.3.0 and < 5.0.0"
 glaze_oat = ">= 3.0.0 and < 4.0.0"
 
 shared = { path = "../shared" }
+gleam_time = ">= 1.8.0 and < 2.0.0"
 
 [dev_dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
