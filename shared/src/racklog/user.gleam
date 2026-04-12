@@ -8,12 +8,18 @@ pub type AppUserRole {
   UserRole
 }
 
+pub type PreferredUnit {
+  Kg
+  Lb
+}
+
 pub type UserDto {
   UserDto(
     id: Int,
     username: String,
     email: String,
     role: AppUserRole,
+    preferred_unit: PreferredUnit,
     created_at: Timestamp,
     updated_at: Timestamp,
   )
@@ -25,6 +31,15 @@ pub fn role_decoder() -> decode.Decoder(AppUserRole) {
     "admin" -> decode.success(AdminRole)
     "user" -> decode.success(UserRole)
     _ -> decode.failure(UserRole, "admin or user")
+  }
+}
+
+pub fn preferred_unit_decoder() -> decode.Decoder(PreferredUnit) {
+  use preferred_unit_str <- decode.then(decode.string)
+  case preferred_unit_str {
+    "kg" -> decode.success(Kg)
+    "lb" -> decode.success(Lb)
+    _ -> decode.failure(Kg, "kg or lb")
   }
 }
 
@@ -45,6 +60,7 @@ pub fn decoder() -> decode.Decoder(UserDto) {
   use username <- decode.field("username", decode.string)
   use email <- decode.field("email", decode.string)
   use role <- decode.field("role", role_decoder())
+  use preferred_unit <- decode.field("preferred_unit", preferred_unit_decoder())
   use created_at <- decode.field("created_at", timestamp_decoder())
   use updated_at <- decode.field("updated_at", timestamp_decoder())
   decode.success(UserDto(
@@ -52,6 +68,7 @@ pub fn decoder() -> decode.Decoder(UserDto) {
     username:,
     email:,
     role:,
+    preferred_unit:,
     created_at:,
     updated_at:,
   ))
@@ -68,12 +85,23 @@ pub fn role_to_string(role: AppUserRole) -> String {
   }
 }
 
+pub fn preferred_unit_to_string(preferred_unit: PreferredUnit) -> String {
+  case preferred_unit {
+    Kg -> "kg"
+    Lb -> "lb"
+  }
+}
+
 pub fn to_json(user: UserDto) -> json.Json {
   json.object([
     #("id", json.int(user.id)),
     #("username", json.string(user.username)),
     #("email", json.string(user.email)),
     #("role", json.string(role_to_string(user.role))),
+    #(
+      "preferred_unit",
+      json.string(preferred_unit_to_string(user.preferred_unit)),
+    ),
     #(
       "created_at",
       json.string(timestamp.to_rfc3339(user.created_at, duration.seconds(0))),
