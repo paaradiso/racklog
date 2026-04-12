@@ -1,16 +1,16 @@
 import auth/auth
 import auth/sql as auth_sql
 import db
+import equipment/sql as equipment_sql
 import exercise/sql as exercise_sql
 import gleam/io
 import gleam/list
-import weight_type/sql as weight_type_sql
 
 pub fn main() {
   let connection = db.connect()
 
-  io.println("Seeding weight types...")
-  let weight_types = [
+  io.println("Seeding equipment...")
+  let equipment = [
     "Barbell",
     "Dumbbell",
     "Cable",
@@ -18,8 +18,8 @@ pub fn main() {
     "Bodyweight",
   ]
 
-  list.each(weight_types, fn(name) {
-    case weight_type_sql.create(connection, name) {
+  list.each(equipment, fn(name) {
+    case equipment_sql.create(connection, name) {
       Ok(_) -> io.println("Created: " <> name)
       Error(_) -> io.println("Error creating: " <> name)
     }

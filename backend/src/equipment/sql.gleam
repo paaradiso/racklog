@@ -1,5 +1,5 @@
 //// This module contains the code to run the sql queries defined in
-//// `./src/weight_type/sql`.
+//// `./src/equipment/sql`.
 //// > 🐿️ This module was generated automatically using v4.6.0 of
 //// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ////
@@ -9,7 +9,7 @@ import gleam/time/timestamp.{type Timestamp}
 import pog
 
 /// A row you get from running the `create` query
-/// defined in `./src/weight_type/sql/create.sql`.
+/// defined in `./src/equipment/sql/create.sql`.
 ///
 /// > 🐿️ This type definition was generated automatically using v4.6.0 of the
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -19,7 +19,7 @@ pub type CreateRow {
 }
 
 /// Runs the `create` query
-/// defined in `./src/weight_type/sql/create.sql`.
+/// defined in `./src/equipment/sql/create.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -36,7 +36,7 @@ pub fn create(
     decode.success(CreateRow(id:, name:, created_at:, updated_at:))
   }
 
-  "INSERT INTO weight_type (name)
+  "INSERT INTO equipment (name)
     VALUES ($1)
 RETURNING
     *
@@ -48,7 +48,7 @@ RETURNING
 }
 
 /// A row you get from running the `list` query
-/// defined in `./src/weight_type/sql/list.sql`.
+/// defined in `./src/equipment/sql/list.sql`.
 ///
 /// > 🐿️ This type definition was generated automatically using v4.6.0 of the
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -58,7 +58,7 @@ pub type ListRow {
 }
 
 /// Runs the `list` query
-/// defined in `./src/weight_type/sql/list.sql`.
+/// defined in `./src/equipment/sql/list.sql`.
 ///
 /// > 🐿️ This function was generated automatically using v4.6.0 of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
@@ -77,7 +77,7 @@ pub fn list(
   "SELECT
     *
 FROM
-    weight_type
+    equipment
 ORDER BY
     created_at DESC
 "

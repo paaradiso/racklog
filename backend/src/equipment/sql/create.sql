@@ -1,4 +1,4 @@
-INSERT INTO weight_type (name)
+INSERT INTO equipment (name)
     VALUES ($1)
 RETURNING
     *

@@ -1,6 +1,6 @@
 SELECT
     *
 FROM
-    weight_type
+    equipment
 ORDER BY
     created_at DESC

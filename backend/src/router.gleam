@@ -1,9 +1,9 @@
 import auth/auth
+import equipment/equipment
 import exercise/exercise
 import gleam/http.{Delete, Get, Patch, Post}
 import middleware
 import web.{type Context}
-import weight_type/weight_type
 import wisp.{type Request, type Response}
 
 pub fn handle_request(req: Request, ctx: Context) -> Response {
@@ -26,8 +26,8 @@ fn handle_authenticated(req: Request, ctx: Context) -> Response {
     Get, ["api", "exercises"] -> exercise.list(req, ctx)
     _, ["api", "exercises"] -> wisp.method_not_allowed([Get])
 
-    Get, ["api", "weight_types"] -> weight_type.list(req, ctx)
-    _, ["api", "weight_types"] -> wisp.method_not_allowed([Get])
+    Get, ["api", "equipment"] -> equipment.list(req, ctx)
+    _, ["api", "equipment"] -> wisp.method_not_allowed([Get])
 
     Get, ["api", "me"] -> auth.me(req, ctx)
     _, ["api", "me"] -> wisp.method_not_allowed([Get])

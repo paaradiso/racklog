@@ -1,8 +1,8 @@
+import equipment/sql.{type ListRow}
 import gleam/json
 import gleam/time/duration
 import gleam/time/timestamp
 import web.{type Context}
-import weight_type/sql.{type ListRow}
 import wisp.{type Request, type Response}
 
 fn list_row_to_json(row: ListRow) -> json.Json {
