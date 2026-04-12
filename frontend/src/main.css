@@ -12,8 +12,32 @@ html {
   @apply bg-background text-foreground;
 }
 
-[aria-current="page"] {
-  @apply text-foreground font-semibold;
+.toast {
+  @apply rounded-lg border border-border bg-card text-card-foreground shadow-lg;
+}
+
+.toast-title {
+  @apply text-base font-semibold;
+}
+
+.toast p {
+  @apply text-sm text-muted-foreground;
+}
+
+.toast[data-variant="success"] {
+  @apply border-accent/30 bg-accent-background-subtle;
+}
+
+.toast[data-variant="success"] .toast-title {
+  @apply text-accent;
+}
+
+.toast[data-variant="danger"] {
+  @apply border-destructive-border bg-destructive-background-subtle;
+}
+
+.toast[data-variant="danger"] .toast-title {
+  @apply text-destructive;
 }
 
 :root {

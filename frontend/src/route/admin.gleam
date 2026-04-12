@@ -1,6 +1,8 @@
 import components.{ButtonDanger, ButtonOutline, ButtonPrimary, ButtonSecondary}
+import fx
 import glaze/oat/dialog
 import glaze/oat/sidebar
+import glaze/oat/toast
 import gleam/int
 import gleam/json
 import gleam/list
@@ -163,7 +165,14 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
       #(next_model, fx)
     }
     FetchedUsers(Ok(users)) -> #(Model(..model, users:), effect.none())
-    FetchedUsers(Error(_)) -> #(model, effect.none())
+    FetchedUsers(Error(_)) -> #(
+      model,
+      fx.toast(
+        title: "Error",
+        description: "Failed to fetch users.",
+        variant: toast.Danger,
+      ),
+    )
     OpenedAddUserDialog -> #(
       Model(..model, add_user_form: default_add_user_form()),
       effect.none(),
@@ -218,11 +227,25 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
 
     DeletedUser(Ok(user_id)) -> {
       let updated_users = list.filter(model.users, fn(u) { u.id != user_id })
-      #(Model(..model, users: updated_users), effect.none())
+      #(
+        Model(..model, users: updated_users),
+        fx.toast(
+          title: "Success",
+          description: "Deleted user " <> int.to_string(user_id) <> ".",
+          variant: toast.Success,
+        ),
+      )
     }
 
-    DeletedUser(Error(e)) -> {
-      #(model, effect.none())
+    DeletedUser(Error(_)) -> {
+      #(
+        model,
+        fx.toast(
+          title: "Error",
+          description: "Failed to delete user.",
+          variant: toast.Danger,
+        ),
+      )
     }
     UpdatedAddUserUsername(username) -> {
       let form = AddUserForm(..model.add_user_form, username:)
@@ -264,12 +287,27 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
         users: [user, ..model.users],
         add_user_form: default_add_user_form(),
       ),
-      close_dialog(dialog_to_id(AddUserDialog)),
+      effect.batch([
+        close_dialog(dialog_to_id(AddUserDialog)),
+
+        fx.toast(
+          title: "Success",
+          description: "Added user" <> user.username <> ".",
+          variant: toast.Success,
+        ),
+      ]),
     )
-    AddedUser(Error(e)) -> {
+    AddedUser(Error(_)) -> {
       let form =
         AddUserForm(..model.add_user_form, error: "Failed to add user.")
-      #(Model(..model, add_user_form: form), effect.none())
+      #(
+        Model(..model, add_user_form: form),
+        fx.toast(
+          title: "Error",
+          description: "Failed to add user.",
+          variant: toast.Danger,
+        ),
+      )
     }
     UpdatedEditUserUsername(username) -> {
       let form = EditUserForm(..model.edit_user_form, username:)
@@ -322,13 +360,27 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
         })
       #(
         Model(..model, users: users, edit_user_form: default_edit_user_form()),
-        close_dialog(dialog_to_id(EditUserDialog)),
+        effect.batch([
+          close_dialog(dialog_to_id(EditUserDialog)),
+          fx.toast(
+            title: "Success",
+            description: "Edited user " <> user.username <> ".",
+            variant: toast.Success,
+          ),
+        ]),
       )
     }
-    EditedUser(Error(e)) -> {
+    EditedUser(Error(_)) -> {
       let form =
         EditUserForm(..model.edit_user_form, error: "Failed to edit user.")
-      #(Model(..model, edit_user_form: form), effect.none())
+      #(
+        Model(..model, edit_user_form: form),
+        fx.toast(
+          title: "Error",
+          description: "Failed to edit user.",
+          variant: toast.Danger,
+        ),
+      )
     }
   }
 }
@@ -707,11 +759,11 @@ fn view_edit_user_dialog(model: Model) -> Element(Msg) {
 fn view_confirm_dialog(model: Model) -> Element(Msg) {
   let display_message = case model.confirm_dialog {
     Some(ConfirmDialog(message: msg, ..)) -> msg
-    _ -> "Are you sure?"
+    _ -> ""
   }
 
   dialog.dialog([dialog.id("confirm"), attribute.class("rounded-lg")], [
-    dialog.header([], [dialog.title([], [html.text(display_message)])]),
+    dialog.header([], [dialog.title([], [html.text("Are you sure?")])]),
     html.div([attribute.class("flex flex-col gap-2")], [
       html.p([], [html.text(display_message)]),
     ]),
