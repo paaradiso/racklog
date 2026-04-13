@@ -7,9 +7,9 @@ todo:
     - [x] `weight_type` -> `equipment`
     - [x] add `preferred_unit` to `app_user`
     - [ ] add `muscle_group` to `exercise` maybe
-    - [ ] `workout` table for an entire workout session
-    - [ ] `workout_set` table
-    - [ ] `workout_exercise` table for a group of `workout_set`s in a `workout`
+    - [x] `workout` table for an entire workout session
+    - [x] `workout_set` table
+    - [x] `workout_exercise` table for a group of `workout_set`s in a `workout`
     - [ ] `routine` table for users to save routine `workout`s 
     - [ ] `routine_exercise` table for `workout_exercise`s in a `routine`
 - [ ] admin route 
