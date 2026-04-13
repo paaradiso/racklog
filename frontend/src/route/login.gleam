@@ -11,30 +11,30 @@ import modem
 import rsvp
 
 pub type Model {
-  Model(email: String, password: String, error: String)
+  Model(username: String, password: String, error: String)
 }
 
 pub type Msg {
-  UpdatedEmail(String)
+  UpdatedUsername(String)
   UpdatedPassword(String)
   SubmittedForm
   GotResponse(Result(response.Response(String), rsvp.Error))
 }
 
 pub fn init() -> #(Model, Effect(Msg)) {
-  #(Model(email: "", password: "", error: ""), effect.none())
+  #(Model(username: "", password: "", error: ""), effect.none())
 }
 
 pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    UpdatedEmail(email) -> #(Model(..model, email:), effect.none())
+    UpdatedUsername(username) -> #(Model(..model, username:), effect.none())
     UpdatedPassword(password) -> #(Model(..model, password:), effect.none())
     SubmittedForm -> {
       let fx =
         rsvp.post(
           "/api/login",
           json.object([
-            #("email", json.string(model.email)),
+            #("username", json.string(model.username)),
             #("password", json.string(model.password)),
           ]),
           rsvp.expect_any_response(GotResponse),
@@ -45,7 +45,7 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
       case resp.status {
         200 -> #(model, modem.push("/admin", None, None))
         401 -> #(
-          Model(..model, error: "Invalid email or password."),
+          Model(..model, error: "Invalid username or password."),
           effect.none(),
         )
         _ -> #(Model(..model, error: "Something went wrong."), effect.none())
@@ -82,13 +82,12 @@ pub fn view(model: Model) -> List(Element(Msg)) {
             ],
             [
               components.form_input(
-                label: "Email Address",
-                id: "email",
-                name: "email",
+                label: "Username",
+                id: "username",
+                name: "username",
                 attributes: [
-                  attribute.type_("email"),
-                  attribute.value(model.email),
-                  event.on_input(UpdatedEmail),
+                  attribute.value(model.username),
+                  event.on_input(UpdatedUsername),
                 ],
               ),
               components.form_input(
