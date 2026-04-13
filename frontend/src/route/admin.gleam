@@ -103,16 +103,10 @@ pub type Msg {
   ConfirmedDialog
   DeleteUserRequestSent(Int)
   DeletedUser(Result(Int, rsvp.Error))
-  UpdatedAddUserUsername(String)
-  UpdatedAddUserEmail(String)
-  UpdatedAddUserPassword(String)
-  UpdatedAddUserRole(AppUserRole)
+  UpdatedAddUserForm(AddUserForm)
   SubmittedAddUser
   AddedUser(Result(UserDto, rsvp.Error))
-  UpdatedEditUserUsername(String)
-  UpdatedEditUserEmail(String)
-  UpdatedEditUserPassword(String)
-  UpdatedEditUserRole(AppUserRole)
+  UpdatedEditUserForm(EditUserForm)
   SubmittedEditUser
   EditedUser(Result(UserDto, rsvp.Error))
 }
@@ -247,20 +241,7 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
         ),
       )
     }
-    UpdatedAddUserUsername(username) -> {
-      let form = AddUserForm(..model.add_user_form, username:)
-      #(Model(..model, add_user_form: form), effect.none())
-    }
-    UpdatedAddUserEmail(email) -> {
-      let form = AddUserForm(..model.add_user_form, email:)
-      #(Model(..model, add_user_form: form), effect.none())
-    }
-    UpdatedAddUserPassword(password) -> {
-      let form = AddUserForm(..model.add_user_form, password:)
-      #(Model(..model, add_user_form: form), effect.none())
-    }
-    UpdatedAddUserRole(role) -> {
-      let form = AddUserForm(..model.add_user_form, role:)
+    UpdatedAddUserForm(form) -> {
       #(Model(..model, add_user_form: form), effect.none())
     }
     SubmittedAddUser -> {
@@ -309,20 +290,7 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
         ),
       )
     }
-    UpdatedEditUserUsername(username) -> {
-      let form = EditUserForm(..model.edit_user_form, username:)
-      #(Model(..model, edit_user_form: form), effect.none())
-    }
-    UpdatedEditUserEmail(email) -> {
-      let form = EditUserForm(..model.edit_user_form, email:)
-      #(Model(..model, edit_user_form: form), effect.none())
-    }
-    UpdatedEditUserPassword(password) -> {
-      let form = EditUserForm(..model.edit_user_form, password:)
-      #(Model(..model, edit_user_form: form), effect.none())
-    }
-    UpdatedEditUserRole(role) -> {
-      let form = EditUserForm(..model.edit_user_form, role:)
+    UpdatedEditUserForm(form) -> {
       #(Model(..model, edit_user_form: form), effect.none())
     }
     SubmittedEditUser -> {
@@ -587,7 +555,11 @@ fn view_add_user_dialog(model: Model) -> Element(Msg) {
               name: "username",
               attributes: [
                 attribute.value(model.add_user_form.username),
-                event.on_input(UpdatedAddUserUsername),
+                event.on_input(fn(v) {
+                  UpdatedAddUserForm(
+                    AddUserForm(..model.add_user_form, username: v),
+                  )
+                }),
               ],
             ),
             components.form_input(
@@ -597,7 +569,11 @@ fn view_add_user_dialog(model: Model) -> Element(Msg) {
               attributes: [
                 attribute.type_("email"),
                 attribute.value(model.add_user_form.email),
-                event.on_input(UpdatedAddUserEmail),
+                event.on_input(fn(v) {
+                  UpdatedAddUserForm(
+                    AddUserForm(..model.add_user_form, email: v),
+                  )
+                }),
               ],
             ),
             components.form_input(
@@ -607,7 +583,11 @@ fn view_add_user_dialog(model: Model) -> Element(Msg) {
               attributes: [
                 attribute.type_("password"),
                 attribute.value(model.add_user_form.password),
-                event.on_input(UpdatedAddUserPassword),
+                event.on_input(fn(v) {
+                  UpdatedAddUserForm(
+                    AddUserForm(..model.add_user_form, password: v),
+                  )
+                }),
               ],
             ),
             html.div([], [
@@ -628,8 +608,14 @@ fn view_add_user_dialog(model: Model) -> Element(Msg) {
                   ),
                   event.on_change(fn(value) {
                     case value {
-                      "Admin" -> UpdatedAddUserRole(AdminRole)
-                      _ -> UpdatedAddUserRole(UserRole)
+                      "Admin" ->
+                        UpdatedAddUserForm(
+                          AddUserForm(..model.add_user_form, role: AdminRole),
+                        )
+                      _ ->
+                        UpdatedAddUserForm(
+                          AddUserForm(..model.add_user_form, role: UserRole),
+                        )
                     }
                   }),
                 ],
@@ -690,7 +676,11 @@ fn view_edit_user_dialog(model: Model) -> Element(Msg) {
               name: "username",
               attributes: [
                 attribute.value(model.edit_user_form.username),
-                event.on_input(UpdatedEditUserUsername),
+                event.on_input(fn(v) {
+                  UpdatedEditUserForm(
+                    EditUserForm(..model.edit_user_form, username: v),
+                  )
+                }),
               ],
             ),
             components.form_input(
@@ -700,7 +690,11 @@ fn view_edit_user_dialog(model: Model) -> Element(Msg) {
               attributes: [
                 attribute.type_("email"),
                 attribute.value(model.edit_user_form.email),
-                event.on_input(UpdatedEditUserEmail),
+                event.on_input(fn(v) {
+                  UpdatedEditUserForm(
+                    EditUserForm(..model.edit_user_form, email: v),
+                  )
+                }),
               ],
             ),
             components.form_input(
@@ -710,7 +704,11 @@ fn view_edit_user_dialog(model: Model) -> Element(Msg) {
               attributes: [
                 attribute.type_("password"),
                 attribute.value(model.edit_user_form.password),
-                event.on_input(UpdatedEditUserPassword),
+                event.on_input(fn(v) {
+                  UpdatedEditUserForm(
+                    EditUserForm(..model.edit_user_form, password: v),
+                  )
+                }),
               ],
             ),
             html.div([], [
@@ -735,8 +733,14 @@ fn view_edit_user_dialog(model: Model) -> Element(Msg) {
                   }),
                   event.on_change(fn(value) {
                     case value {
-                      "Admin" -> UpdatedEditUserRole(AdminRole)
-                      _ -> UpdatedEditUserRole(UserRole)
+                      "Admin" ->
+                        UpdatedEditUserForm(
+                          EditUserForm(..model.edit_user_form, role: AdminRole),
+                        )
+                      _ ->
+                        UpdatedEditUserForm(
+                          EditUserForm(..model.edit_user_form, role: UserRole),
+                        )
                     }
                   }),
                 ],
