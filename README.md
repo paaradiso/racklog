@@ -16,8 +16,8 @@ todo:
     - [ ] manage `equipment`
     - [ ] manage `exercise`
     - [x] show all user data on users tab
-    - [ ] finish user role selects on users tab
-    - [ ] check if forms in model are made empty when their dialogs close
+    - [x] finish user role selects on users tab
+    - [x] check if forms in model are made empty when their dialogs close
 - [ ] user settings
     - [ ] manage `equipment`
     - [ ] manage `exercise`
