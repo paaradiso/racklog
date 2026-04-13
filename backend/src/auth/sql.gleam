@@ -320,6 +320,70 @@ WHERE
   |> pog.execute(db)
 }
 
+/// A row you get from running the `get_user_by_username` query
+/// defined in `./src/auth/sql/get_user_by_username.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v4.6.0 of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type GetUserByUsernameRow {
+  GetUserByUsernameRow(
+    id: Int,
+    email: String,
+    hashed_password: String,
+    created_at: Timestamp,
+    updated_at: Timestamp,
+    username: String,
+    user_role: AppUserRole,
+    preferred_unit: PreferredUnit,
+  )
+}
+
+/// Runs the `get_user_by_username` query
+/// defined in `./src/auth/sql/get_user_by_username.sql`.
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn get_user_by_username(
+  db: pog.Connection,
+  arg_1: String,
+) -> Result(pog.Returned(GetUserByUsernameRow), pog.QueryError) {
+  let decoder = {
+    use id <- decode.field(0, decode.int)
+    use email <- decode.field(1, decode.string)
+    use hashed_password <- decode.field(2, decode.string)
+    use created_at <- decode.field(3, pog.timestamp_decoder())
+    use updated_at <- decode.field(4, pog.timestamp_decoder())
+    use username <- decode.field(5, decode.string)
+    use user_role <- decode.field(6, app_user_role_decoder())
+    use preferred_unit <- decode.field(7, preferred_unit_decoder())
+    decode.success(GetUserByUsernameRow(
+      id:,
+      email:,
+      hashed_password:,
+      created_at:,
+      updated_at:,
+      username:,
+      user_role:,
+      preferred_unit:,
+    ))
+  }
+
+  "SELECT
+    *
+FROM
+    app_user
+WHERE
+    username = $1;
+
+"
+  |> pog.query
+  |> pog.parameter(pog.text(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
 /// A row you get from running the `list_users` query
 /// defined in `./src/auth/sql/list_users.sql`.
 ///

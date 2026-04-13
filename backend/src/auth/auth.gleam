@@ -64,9 +64,9 @@ fn update_user_payload_decoder() -> decode.Decoder(UpdateUserPayload) {
 }
 
 fn user_credentials_decoder() -> decode.Decoder(#(String, String)) {
-  use email <- decode.field("email", decode.string)
+  use username <- decode.field("username", decode.string)
   use password <- decode.field("password", decode.string)
-  decode.success(#(email, password))
+  decode.success(#(username, password))
 }
 
 fn shared_role_to_sql_role(role: user.AppUserRole) -> sql.AppUserRole {
@@ -129,12 +129,12 @@ pub fn login(req: Request, ctx: Context) -> Response {
   use json <- wisp.require_json(req)
 
   let auth_result = {
-    use #(email, password) <- result.try(
+    use #(username, password) <- result.try(
       decode.run(json, user_credentials_decoder())
       |> result.map_error(fn(_) { wisp.unprocessable_content() }),
     )
     use returned <- result.try(
-      sql.get_user_by_email(ctx.db, email)
+      sql.get_user_by_username(ctx.db, username)
       |> result.map_error(fn(_) { wisp.internal_server_error() }),
     )
     use user <- result.try(
