@@ -4,7 +4,7 @@ WIP self-hosted workout tracker built in Gleam.
 todo:
 - [ ] better error handling and responses
 - [ ] tables
-    - [ ] `weight_type` -> `equipment`
+    - [x] `weight_type` -> `equipment`
     - [x] add `preferred_unit` to `app_user`
     - [ ] add `muscle_group` to `exercise` maybe
     - [ ] `workout` table for an entire workout session
