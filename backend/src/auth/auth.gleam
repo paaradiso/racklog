@@ -4,7 +4,7 @@ import gleam/dynamic/decode
 import gleam/int
 import gleam/json
 import gleam/list
-import gleam/option.{type Option}
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/time/timestamp
 import racklog/user.{type AppUserRole, type PreferredUnit}
@@ -18,7 +18,6 @@ pub type CreateUserPayload {
     email: String,
     password: String,
     user_role: AppUserRole,
-    preferred_unit: PreferredUnit,
   )
 }
 
@@ -27,17 +26,7 @@ fn create_user_payload_decoder() -> decode.Decoder(CreateUserPayload) {
   use email <- decode.field("email", decode.string)
   use password <- decode.field("password", decode.string)
   use user_role <- decode.field("user_role", user.role_decoder())
-  use preferred_unit <- decode.field(
-    "preferred_unit",
-    user.preferred_unit_decoder(),
-  )
-  decode.success(CreateUserPayload(
-    username:,
-    email:,
-    password:,
-    user_role:,
-    preferred_unit:,
-  ))
+  decode.success(CreateUserPayload(username:, email:, password:, user_role:))
 }
 
 pub type UpdateUserPayload {
@@ -56,12 +45,12 @@ fn update_user_payload_decoder() -> decode.Decoder(UpdateUserPayload) {
   use password <- decode.optional_field("password", "", decode.string)
   use user_role <- decode.optional_field(
     "user_role",
-    option.None,
+    None,
     decode.optional(user.role_decoder()),
   )
   use preferred_unit <- decode.optional_field(
     "preferred_unit",
-    option.None,
+    None,
     decode.optional(user.preferred_unit_decoder()),
   )
 
@@ -230,8 +219,8 @@ pub fn create_user(req: Request, ctx: Context) -> Response {
 
 pub fn me(_req: Request, ctx: Context) -> Response {
   case ctx.user_id {
-    option.None -> Error(wisp.response(401))
-    option.Some(user_id) -> {
+    None -> Error(wisp.response(401))
+    Some(user_id) -> {
       use returned <- result.try(
         sql.get_current_user(ctx.db, user_id)
         |> result.map_error(fn(_) { wisp.internal_server_error() }),
@@ -316,8 +305,13 @@ pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
     }
 
     let role_string = case payload.user_role {
-      option.Some(role) -> user.role_to_string(role)
-      option.None -> ""
+      Some(role) -> user.role_to_string(role)
+      None -> ""
+    }
+
+    let preferred_unit_string = case payload.preferred_unit {
+      Some(preferred_unit) -> user.preferred_unit_to_string(preferred_unit)
+      None -> ""
     }
 
     use returned <- result.try(
@@ -327,6 +321,7 @@ pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
         payload.email,
         hashed_password,
         role_string,
+        preferred_unit_string,
         id,
       )
       |> result.map_error(fn(_) { wisp.internal_server_error() }),

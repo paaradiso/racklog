@@ -410,7 +410,8 @@ pub fn update_user_by_id(
   arg_2: String,
   arg_3: String,
   arg_4: String,
-  arg_5: Int,
+  arg_5: String,
+  arg_6: Int,
 ) -> Result(pog.Returned(UpdateUserByIdRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, decode.int)
@@ -442,7 +443,7 @@ SET
     user_role = COALESCE(NULLIF ($4::text, '')::app_user_role, user_role),
     preferred_unit = COALESCE(NULLIF ($5::text, '')::preferred_unit, preferred_unit)
 WHERE
-    id = $5
+    id = $6
 RETURNING
     *;
 
@@ -452,7 +453,8 @@ RETURNING
   |> pog.parameter(pog.text(arg_2))
   |> pog.parameter(pog.text(arg_3))
   |> pog.parameter(pog.text(arg_4))
-  |> pog.parameter(pog.int(arg_5))
+  |> pog.parameter(pog.text(arg_5))
+  |> pog.parameter(pog.int(arg_6))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

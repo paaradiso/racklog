@@ -7,7 +7,7 @@ SET
     user_role = COALESCE(NULLIF ($4::text, '')::app_user_role, user_role),
     preferred_unit = COALESCE(NULLIF ($5::text, '')::preferred_unit, preferred_unit)
 WHERE
-    id = $5
+    id = $6
 RETURNING
     *;
 
