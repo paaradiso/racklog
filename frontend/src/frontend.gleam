@@ -1,6 +1,7 @@
-import components
+import components.{ButtonOutline}
+import glaze/oat/dropdown
 import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/option.{None, Some}
 import gleam/result
 import gleam/uri.{type Uri}
 import lucide_lustre
@@ -9,12 +10,14 @@ import lustre/attribute.{type Attribute}
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
+import lustre/event
 import modem
 import racklog/user.{type UserDto}
 import route/admin
 import route/equipment
 import route/exercises
 import route/login
+import route/settings
 import rsvp
 
 pub fn main() -> Nil {
@@ -35,6 +38,7 @@ type Path {
   ExercisesPath
   LoginPath
   AdminPath
+  SettingsPath
 }
 
 type Route {
@@ -43,6 +47,7 @@ type Route {
   Exercises(exercises.Model)
   Login(login.Model)
   Admin(admin.Model)
+  Settings(settings.Model)
   NotFound(uri: Uri)
 }
 
@@ -52,11 +57,13 @@ type Model {
 
 type Msg {
   UserNavigatedTo(Uri)
+  NavigateTo(String)
   GotCurrentUser(Result(UserDto, rsvp.Error))
   EquipmentMsg(equipment.Msg)
   ExercisesMsg(exercises.Msg)
   LoginMsg(login.Msg)
   AdminMsg(admin.Msg)
+  SettingsMsg(settings.Msg)
 }
 
 fn uri_to_route(uri: Uri) -> #(Route, Effect(Msg)) {
@@ -89,19 +96,28 @@ fn uri_to_route(uri: Uri) -> #(Route, Effect(Msg)) {
         }
       }
     }
+    ["settings"] -> {
+      let #(model, fx) = settings.init()
+      #(Settings(model), effect.map(fx, SettingsMsg))
+    }
     _ -> #(NotFound(uri:), effect.none())
   }
 }
 
-fn href(path: Path) -> Attribute(msg) {
-  let url = case path {
+fn path_to_url(path: Path) -> String {
+  case path {
     IndexPath -> "/"
     EquipmentPath -> "/equipment"
     ExercisesPath -> "/exercises"
     LoginPath -> "/login"
     AdminPath -> "/admin"
+    SettingsPath -> "/settings"
   }
-  attribute.href(url)
+}
+
+fn href(path: Path) -> Attribute(msg) {
+  path_to_url(path)
+  |> attribute.href
 }
 
 fn init(_) -> #(Model, Effect(Msg)) {
@@ -120,8 +136,6 @@ fn fetch_current_user() -> Effect(Msg) {
 }
 
 fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
-  echo model
-  echo msg
   case msg, model.route {
     GotCurrentUser(Ok(user)), _ -> #(
       Model(..model, user: LoggedIn(user)),
@@ -146,6 +160,12 @@ fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
         effect.batch([fx, fetch_current_user(), redirect_effect]),
       )
     }
+    NavigateTo(path), _ -> {
+      #(
+        model,
+        effect.batch([modem.push(path, None, None), close_all_popovers()]),
+      )
+    }
     EquipmentMsg(route_msg), Equipment(route_model) -> {
       let #(m, fx) = equipment.update(route_model, route_msg)
       #(Model(..model, route: Equipment(m)), effect.map(fx, EquipmentMsg))
@@ -161,6 +181,10 @@ fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
     AdminMsg(route_msg), Admin(route_model) -> {
       let #(m, fx) = admin.update(route_model, route_msg)
       #(Model(..model, route: Admin(m)), effect.map(fx, AdminMsg))
+    }
+    SettingsMsg(route_msg), Settings(route_model) -> {
+      let #(m, fx) = settings.update(route_model, route_msg)
+      #(Model(..model, route: Settings(m)), effect.map(fx, SettingsMsg))
     }
     _, _ -> #(model, effect.none())
   }
@@ -207,6 +231,7 @@ fn view_app(user: UserDto, model: Model) -> Element(Msg) {
         Equipment(m) -> view_route(m, equipment.view, EquipmentMsg)
         Exercises(m) -> view_route(m, exercises.view, ExercisesMsg)
         Admin(m) -> view_route(m, admin.view, AdminMsg)
+        Settings(m) -> view_route(m, settings.view, SettingsMsg)
         Login(_) -> []
         NotFound(_) -> [html.text("not found")]
       },
@@ -223,7 +248,7 @@ fn view_route(
   |> list.map(element.map(_, route_msg_fn))
 }
 
-fn view_header(user: UserDto) -> Element(Msg) {
+fn view_header(_user: UserDto) -> Element(Msg) {
   html.header(
     [
       attribute.class(
@@ -275,7 +300,30 @@ fn view_header(user: UserDto) -> Element(Msg) {
                   lucide_lustre.settings([attribute.class("size-5")]),
                 ],
               ),
-              element.text(user.username),
+              dropdown.dropdown([], [
+                components.button(
+                  variant: ButtonOutline,
+                  href: "",
+                  attributes: [dropdown.trigger_for("user_dropdown")],
+                  children: [element.text("open")],
+                ),
+                dropdown.menu(
+                  "user_dropdown",
+                  [attribute.class("overflow-hidden")],
+                  [
+                    dropdown.item(
+                      [
+                        attribute.class("bg-card"),
+                        event.on_click(NavigateTo(path_to_url(SettingsPath))),
+                      ],
+                      [
+                        lucide_lustre.settings([attribute.class("size-4")]),
+                        element.text("Settings"),
+                      ],
+                    ),
+                  ],
+                ),
+              ]),
             ],
           ),
         ],
@@ -283,3 +331,10 @@ fn view_header(user: UserDto) -> Element(Msg) {
     ],
   )
 }
+
+fn close_all_popovers() -> Effect(Msg) {
+  effect.from(fn(_) { js_close_all_popovers() })
+}
+
+@external(javascript, "./ffi.js", "closeAllPopovers")
+fn js_close_all_popovers() -> Nil
