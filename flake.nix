@@ -38,20 +38,17 @@
             export PGPORT=5432
             export PGDATABASE="racklog_dev"
             export DATABASE_URL="postgres://$USER@localhost:$PGPORT/$PGDATABASE"
-
             if [ ! -d "$PGDATA" ]; then
               initdb --no-locale --encoding=UTF8 -D "$PGDATA" --auth=trust > /dev/null
               echo "unix_socket_directories = '$PGHOST'" >> "$PGDATA/postgresql.conf"
               mkdir -p "$PGHOST"
-              pg_ctl start -D "$PGDATA" -l "$PGHOST/postgres.log"
+              pg_ctl start -D "$PGDATA" -l "$PGHOST/postgres.log" -W
               createdb "$PGDATABASE"
             fi
-
             if ! pg_ctl status -D "$PGDATA" > /dev/null 2>&1; then
               mkdir -p "$PGHOST"
-              pg_ctl start -D "$PGDATA" -l "$PGHOST/postgres.log"
+              pg_ctl start -D "$PGDATA" -l "$PGHOST/postgres.log" -W
             fi
-
             echo "Postgres running on port $PGPORT, database: $PGDATABASE"
             echo "Dev shell active. Gleam version: $(gleam --version)"
             echo "Available commands: pg-start, pg-stop, pg-status, pg-logs"
