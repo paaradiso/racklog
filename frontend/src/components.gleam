@@ -1,3 +1,4 @@
+import gleam/list
 import lucide_lustre
 import lustre/attribute.{type Attribute}
 import lustre/element.{type Element}
@@ -10,12 +11,7 @@ pub type ButtonVariant {
   ButtonDanger
 }
 
-pub fn button(
-  variant variant: ButtonVariant,
-  href href: String,
-  attributes attributes: List(Attribute(msg)),
-  children children: List(Element(msg)),
-) -> Element(msg) {
+pub fn button_classes(variant: ButtonVariant) -> List(Attribute(_)) {
   let variant_styles = case variant {
     ButtonPrimary -> "bg-foreground hover:bg-foreground/90 text-background"
     ButtonSecondary ->
@@ -26,13 +22,21 @@ pub fn button(
       "bg-destructive text-destructive-foreground hover:bg-destructive-background-hover"
   }
 
-  let all_attributes = [
+  [
     attribute.class(
-      "flex justify-center items-center py-2 px-4 font-medium rounded-lg transition-colors cursor-pointer focus:ring-2 focus:ring-offset-2 focus:outline-none focus:ring-ring",
+      "flex gap-2 justify-center items-center py-1.5 px-3 font-medium rounded-lg transition-colors cursor-pointer focus:ring-2 focus:ring-offset-2 focus:outline-none focus:ring-ring",
     ),
     attribute.class(variant_styles),
-    ..attributes
   ]
+}
+
+pub fn button(
+  variant variant: ButtonVariant,
+  href href: String,
+  attributes attributes: List(Attribute(msg)),
+  children children: List(Element(msg)),
+) -> Element(msg) {
+  let all_attributes = [attributes, button_classes(variant)] |> list.flatten
 
   case href {
     "" -> html.button(all_attributes, children)
@@ -107,6 +111,61 @@ pub fn error_message_box(message message: String) -> Element(msg) {
     [
       lucide_lustre.triangle_alert([attribute.class("size-4")]),
       element.text(message),
+    ],
+  )
+}
+
+pub fn dropdown(
+  trigger trigger: List(Element(msg)),
+  items items: List(Element(msg)),
+) -> Element(msg) {
+  html.div([attribute.class("relative group")], [
+    button(
+      variant: ButtonOutline,
+      href: "",
+      attributes: [
+        attribute.attribute(
+          "onmousedown",
+          "if(document.activeElement === this) { event.preventDefault(); this.blur(); }",
+        ),
+      ],
+      children: trigger,
+    ),
+    html.div(
+      [
+        attribute.class(
+          "flex hidden absolute right-0 top-full z-50 flex-col mt-1 rounded-md border shadow-md min-w-48 bg-card border-border group-focus-within:flex",
+        ),
+      ],
+      items,
+    ),
+  ])
+}
+
+pub fn dropdown_item(
+  attributes attributes: List(Attribute(msg)),
+  children children: List(Element(msg)),
+) -> Element(msg) {
+  html.button(
+    [
+      attribute.type_("button"),
+      // TODO: fix classes when i remove glaze_oat
+      // override glaze_oat default button styling
+      attribute.class(
+        "p-0 m-0 w-full font-normal text-left bg-transparent border-none shadow-none appearance-none cursor-pointer focus:outline-none",
+      ),
+      attribute.attribute("onclick", "document.activeElement.blur()"),
+      ..attributes
+    ],
+    [
+      html.div(
+        [
+          attribute.class(
+            "flex gap-2 items-center py-2 px-4 w-full text-sm hover:bg-secondary/50",
+          ),
+        ],
+        children,
+      ),
     ],
   )
 }

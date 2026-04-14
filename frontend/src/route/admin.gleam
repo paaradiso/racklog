@@ -494,14 +494,12 @@ fn view_users_tab(model: Model) -> Element(Msg) {
                 variant: ButtonOutline,
                 href: "",
                 attributes: [
-                  attribute.class(
-                    "flex justify-center items-center h-10 py-0! px-4!",
-                  ),
+                  attribute.class("flex justify-center items-center"),
                   event.on_click(OpenedEditUserDialog(user)),
                   ..dialog.open_for(dialog_to_id(EditUserDialog))
                 ],
                 children: [
-                  lucide_lustre.pencil([attribute.class("mr-2 size-4")]),
+                  lucide_lustre.pencil([attribute.class("size-4")]),
                   element.text("Edit"),
                 ],
               ),
@@ -510,7 +508,7 @@ fn view_users_tab(model: Model) -> Element(Msg) {
                 href: "",
                 attributes: [
                   attribute.class(
-                    "flex justify-center items-center h-10 py-0! px-4! text-destructive hover:text-destructive hover:bg-destructive/10",
+                    "flex justify-center items-center text-destructive hover:text-destructive hover:bg-destructive/10",
                   ),
                   event.on_click(OpenedConfirmDialog(
                     message: "This user will be permanently deleted.",
@@ -519,7 +517,7 @@ fn view_users_tab(model: Model) -> Element(Msg) {
                   ..dialog.open_for("confirm")
                 ],
                 children: [
-                  lucide_lustre.trash_2([attribute.class("mr-2 size-4")]),
+                  lucide_lustre.trash_2([attribute.class("size-4")]),
                   element.text("Delete"),
                 ],
               ),

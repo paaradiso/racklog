@@ -103,3 +103,53 @@ pub fn settings(attributes: List(Attribute(a))) {
     ],
   )
 }
+
+pub fn circle_user_round(attributes: List(Attribute(a))) {
+  svg.svg(
+    [
+      attribute("stroke-linejoin", "round"),
+      attribute("stroke-linecap", "round"),
+      attribute("stroke-width", "2"),
+      attribute("stroke", "currentColor"),
+      attribute("fill", "none"),
+      attribute("viewBox", "0 0 24 24"),
+      attribute("height", "24"),
+      attribute("width", "24"),
+      ..attributes
+    ],
+    [
+      svg.path([attribute("d", "M17.925 20.056a6 6 0 0 0-11.851.001")]),
+      svg.circle([
+        attribute("r", "4"),
+        attribute("cy", "11"),
+        attribute("cx", "12"),
+      ]),
+      svg.circle([
+        attribute("r", "10"),
+        attribute("cy", "12"),
+        attribute("cx", "12"),
+      ]),
+    ],
+  )
+}
+
+pub fn log_out(attributes: List(Attribute(a))) {
+  svg.svg(
+    [
+      attribute("stroke-linejoin", "round"),
+      attribute("stroke-linecap", "round"),
+      attribute("stroke-width", "2"),
+      attribute("stroke", "currentColor"),
+      attribute("fill", "none"),
+      attribute("viewBox", "0 0 24 24"),
+      attribute("height", "24"),
+      attribute("width", "24"),
+      ..attributes
+    ],
+    [
+      svg.path([attribute("d", "m16 17 5-5-5-5")]),
+      svg.path([attribute("d", "M21 12H9")]),
+      svg.path([attribute("d", "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4")]),
+    ],
+  )
+}

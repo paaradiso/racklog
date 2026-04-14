@@ -1,5 +1,7 @@
 import components.{ButtonOutline}
-import glaze/oat/dropdown
+import gleam/http/response
+
+import gleam/json
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
@@ -59,6 +61,9 @@ type Msg {
   UserNavigatedTo(Uri)
   NavigateTo(String)
   GotCurrentUser(Result(UserDto, rsvp.Error))
+  SubmittedLogout
+  GotLogoutResponse(Result(response.Response(String), rsvp.Error))
+
   EquipmentMsg(equipment.Msg)
   ExercisesMsg(exercises.Msg)
   LoginMsg(login.Msg)
@@ -161,10 +166,29 @@ fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
       )
     }
     NavigateTo(path), _ -> {
-      #(
-        model,
-        effect.batch([modem.push(path, None, None), close_all_popovers()]),
-      )
+      #(model, modem.push(path, None, None))
+    }
+    SubmittedLogout, _ -> {
+      let logout_effect =
+        rsvp.post(
+          "/api/logout",
+          json.null(),
+          rsvp.expect_any_response(GotLogoutResponse),
+        )
+      #(model, logout_effect)
+    }
+    GotLogoutResponse(Ok(response)), _ -> {
+      case response.status {
+        200 | 401 -> {
+          #(Model(..model, user: LoggedOut), modem.push("/login", None, None))
+        }
+        _ -> {
+          #(model, effect.none())
+        }
+      }
+    }
+    GotLogoutResponse(Error(_)), _ -> {
+      #(model, effect.none())
     }
     EquipmentMsg(route_msg), Equipment(route_model) -> {
       let #(m, fx) = equipment.update(route_model, route_msg)
@@ -248,11 +272,11 @@ fn view_route(
   |> list.map(element.map(_, route_msg_fn))
 }
 
-fn view_header(_user: UserDto) -> Element(Msg) {
+fn view_header(user: UserDto) -> Element(Msg) {
   html.header(
     [
       attribute.class(
-        "flex relative z-50 justify-center items-center w-full h-16 border-b shadow-md shrink-0 bg-card border-border backdrop-blur-sm",
+        "flex relative z-50 justify-center items-center w-full h-16 border-b shadow-md shrink-0 bg-card border-border",
       ),
     ],
     [
@@ -300,30 +324,30 @@ fn view_header(_user: UserDto) -> Element(Msg) {
                   lucide_lustre.settings([attribute.class("size-5")]),
                 ],
               ),
-              dropdown.dropdown([], [
-                components.button(
-                  variant: ButtonOutline,
-                  href: "",
-                  attributes: [dropdown.trigger_for("user_dropdown")],
-                  children: [element.text("open")],
-                ),
-                dropdown.menu(
-                  "user_dropdown",
-                  [attribute.class("overflow-hidden")],
-                  [
-                    dropdown.item(
-                      [
-                        attribute.class("bg-card"),
-                        event.on_click(NavigateTo(path_to_url(SettingsPath))),
-                      ],
-                      [
-                        lucide_lustre.settings([attribute.class("size-4")]),
-                        element.text("Settings"),
-                      ],
-                    ),
-                  ],
-                ),
-              ]),
+              components.dropdown(
+                trigger: [
+                  lucide_lustre.circle_user_round([attribute.class("size-5")]),
+                  element.text(user.username),
+                ],
+                items: [
+                  components.dropdown_item(
+                    attributes: [
+                      event.on_click(NavigateTo(path_to_url(SettingsPath))),
+                    ],
+                    children: [
+                      lucide_lustre.settings([attribute.class("size-4")]),
+                      element.text("Settings"),
+                    ],
+                  ),
+                  components.dropdown_item(
+                    attributes: [event.on_click(SubmittedLogout)],
+                    children: [
+                      lucide_lustre.log_out([attribute.class("size-4")]),
+                      element.text("Log out"),
+                    ],
+                  ),
+                ],
+              ),
             ],
           ),
         ],
@@ -331,10 +355,3 @@ fn view_header(_user: UserDto) -> Element(Msg) {
     ],
   )
 }
-
-fn close_all_popovers() -> Effect(Msg) {
-  effect.from(fn(_) { js_close_all_popovers() })
-}
-
-@external(javascript, "./ffi.js", "closeAllPopovers")
-fn js_close_all_popovers() -> Nil

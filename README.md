@@ -2,6 +2,8 @@
 WIP self-hosted workout tracker built in Gleam.
 
 todo:
+- [x] fix dropdown, it shouldn't need hacky ffi like this 
+- [ ] remove `glaze_oat` or replace with `glaze_basecoat` 
 - [ ] better error handling and responses
 - [ ] tables
     - [x] `weight_type` -> `equipment`
