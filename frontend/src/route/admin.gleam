@@ -395,7 +395,10 @@ fn view_sidebar_button(
           "cursor-pointer hover:text-foreground/70 w-full h-14 flex items-center pl-4",
           True,
         ),
-        #("font-semibold bg-secondary", active_tab == target_tab),
+        #(
+          "font-semibold bg-secondary pointer-events-none",
+          active_tab == target_tab,
+        ),
       ]),
     ],
     [element.text(label)],

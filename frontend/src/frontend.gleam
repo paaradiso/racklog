@@ -23,6 +23,12 @@ pub fn main() -> Nil {
   Nil
 }
 
+type User {
+  LoggedIn(UserDto)
+  LoggedOut
+  Loading
+}
+
 type Path {
   IndexPath
   EquipmentPath
@@ -41,7 +47,7 @@ type Route {
 }
 
 type Model {
-  Model(route: Route, user: Option(UserDto))
+  Model(route: Route, user: User)
 }
 
 type Msg {
@@ -104,7 +110,7 @@ fn init(_) -> #(Model, Effect(Msg)) {
   let #(route, route_effect) = uri_to_route(uri)
   let user_effect = fetch_current_user()
   #(
-    Model(route:, user: None),
+    Model(route:, user: Loading),
     effect.batch([nav_effect, route_effect, user_effect]),
   )
 }
@@ -114,15 +120,31 @@ fn fetch_current_user() -> Effect(Msg) {
 }
 
 fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
+  echo model
+  echo msg
   case msg, model.route {
     GotCurrentUser(Ok(user)), _ -> #(
-      Model(..model, user: Some(user)),
+      Model(..model, user: LoggedIn(user)),
       effect.none(),
     )
-    GotCurrentUser(Error(_)), _ -> #(Model(..model, user: None), effect.none())
+    GotCurrentUser(Error(_)), _ ->
+      case model.route {
+        Login(_) -> #(Model(..model, user: LoggedOut), effect.none())
+        _ -> #(
+          Model(..model, user: LoggedOut),
+          modem.replace("/login", None, None),
+        )
+      }
     UserNavigatedTo(uri), _ -> {
       let #(route, fx) = uri_to_route(uri)
-      #(Model(..model, route:), effect.batch([fx, fetch_current_user()]))
+      let redirect_effect = case route, model.user {
+        Login(_), LoggedIn(_) -> modem.replace("/", None, None)
+        _, _ -> effect.none()
+      }
+      #(
+        Model(..model, route:),
+        effect.batch([fx, fetch_current_user(), redirect_effect]),
+      )
     }
     EquipmentMsg(route_msg), Equipment(route_model) -> {
       let #(m, fx) = equipment.update(route_model, route_msg)
@@ -145,27 +167,51 @@ fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 fn view(model: Model) -> Element(Msg) {
+  case model.user {
+    Loading -> view_loading()
+    LoggedOut -> view_logged_out(model)
+    LoggedIn(user) -> view_app(user, model)
+  }
+}
+
+fn view_loading() -> Element(Msg) {
   html.div(
     [
-      attribute.class("flex overflow-hidden flex-col w-full h-screen"),
-    ],
-    [
-      render_header(model),
-      html.div(
-        [
-          attribute.class("flex overflow-hidden z-40 flex-1 w-full min-h-0"),
-        ],
-        case model.route {
-          Index -> [html.text("index")]
-          Equipment(m) -> view_route(m, equipment.view, EquipmentMsg)
-          Exercises(m) -> view_route(m, exercises.view, ExercisesMsg)
-          Login(m) -> view_route(m, login.view, LoginMsg)
-          Admin(m) -> view_route(m, admin.view, AdminMsg)
-          NotFound(_) -> [html.text("not found")]
-        },
+      attribute.class(
+        "flex justify-center items-center w-full h-screen text-muted-foreground",
       ),
     ],
+    [html.text("Loading…")],
   )
+}
+
+fn view_logged_out(model: Model) -> Element(Msg) {
+  html.div([attribute.class("flex overflow-hidden flex-col w-full h-screen")], [
+    html.div(
+      [attribute.class("flex overflow-hidden z-40 flex-1 w-full min-h-0")],
+      case model.route {
+        Login(m) -> view_route(m, login.view, LoginMsg)
+        _ -> []
+      },
+    ),
+  ])
+}
+
+fn view_app(user: UserDto, model: Model) -> Element(Msg) {
+  html.div([attribute.class("flex overflow-hidden flex-col w-full h-screen")], [
+    view_header(user),
+    html.div(
+      [attribute.class("flex overflow-hidden z-40 flex-1 w-full min-h-0")],
+      case model.route {
+        Index -> [html.text("index")]
+        Equipment(m) -> view_route(m, equipment.view, EquipmentMsg)
+        Exercises(m) -> view_route(m, exercises.view, ExercisesMsg)
+        Admin(m) -> view_route(m, admin.view, AdminMsg)
+        Login(_) -> []
+        NotFound(_) -> [html.text("not found")]
+      },
+    ),
+  ])
 }
 
 fn view_route(
@@ -177,7 +223,7 @@ fn view_route(
   |> list.map(element.map(_, route_msg_fn))
 }
 
-fn render_header(model: Model) -> Element(Msg) {
+fn view_header(user: UserDto) -> Element(Msg) {
   html.header(
     [
       attribute.class(
@@ -219,28 +265,17 @@ fn render_header(model: Model) -> Element(Msg) {
               attribute.class("flex gap-4 items-center"),
             ],
             [
-              case model.user {
-                option.Some(user) ->
-                  element.fragment([
-                    html.a(
-                      [
-                        href(AdminPath),
+              html.a(
+                [
+                  href(AdminPath),
 
-                        attribute.title("Admin"),
-                      ],
-                      [
-                        lucide_lustre.settings([attribute.class("size-5")]),
-                      ],
-                    ),
-                    element.text(user.username),
-                  ])
-                option.None ->
-                  element.fragment([
-                    components.link(attributes: [href(LoginPath)], children: [
-                      element.text("Log In"),
-                    ]),
-                  ])
-              },
+                  attribute.title("Admin"),
+                ],
+                [
+                  lucide_lustre.settings([attribute.class("size-5")]),
+                ],
+              ),
+              element.text(user.username),
             ],
           ),
         ],
