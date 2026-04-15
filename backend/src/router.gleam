@@ -23,6 +23,9 @@ fn handle_authenticated(req: Request, ctx: Context) -> Response {
   use _user_id <- middleware.require_auth(ctx)
 
   case req.method, wisp.path_segments(req) {
+    Post, ["api", "logout"] -> auth.logout(req, ctx)
+    _, ["api", "logout"] -> wisp.method_not_allowed([Post])
+
     Get, ["api", "exercises"] -> exercise.list(req, ctx)
     _, ["api", "exercises"] -> wisp.method_not_allowed([Get])
 

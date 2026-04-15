@@ -170,6 +170,34 @@ pub fn login(req: Request, ctx: Context) -> Response {
   }
 }
 
+pub fn logout(req: Request, ctx: Context) -> Response {
+  let logout_result = {
+    use session_id <- result.try(
+      wisp.get_cookie(req, "session_id", wisp.Signed)
+      |> result.map_error(fn(_) { wisp.response(401) }),
+    )
+
+    use _ <- result.try(
+      sql.delete_session_by_id(ctx.db, session_id)
+      |> result.map_error(fn(_) { wisp.internal_server_error() }),
+    )
+    Ok(Nil)
+  }
+
+  case logout_result {
+    Error(response) -> response
+    Ok(Nil) ->
+      wisp.response(200)
+      |> wisp.set_cookie(
+        req,
+        name: "session_id",
+        value: "",
+        security: wisp.Signed,
+        max_age: 0,
+      )
+  }
+}
+
 pub fn create_user(req: Request, ctx: Context) -> Response {
   use json <- wisp.require_json(req)
 

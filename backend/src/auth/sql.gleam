@@ -122,6 +122,28 @@ RETURNING
   |> pog.execute(db)
 }
 
+/// Runs the `delete_session_by_id` query
+/// defined in `./src/auth/sql/delete_session_by_id.sql`.
+///
+/// > 🐿️ This function was generated automatically using v4.6.0 of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn delete_session_by_id(
+  db: pog.Connection,
+  arg_1: String,
+) -> Result(pog.Returned(Nil), pog.QueryError) {
+  let decoder = decode.map(decode.dynamic, fn(_) { Nil })
+
+  "DELETE FROM session
+WHERE id = $1;
+
+"
+  |> pog.query
+  |> pog.parameter(pog.text(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
 /// Runs the `delete_user_by_id` query
 /// defined in `./src/auth/sql/delete_user_by_id.sql`.
 ///
