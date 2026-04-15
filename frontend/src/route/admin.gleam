@@ -728,10 +728,6 @@ fn view_edit_user_dialog(model: Model) -> Element(Msg) {
                   attribute.class(
                     "py-2 px-3 w-full rounded-md border focus:border-transparent focus:ring-2 focus:outline-none border-input-border placeholder:text-muted-foreground focus:ring-ring",
                   ),
-                  attribute.value(case model.edit_user_form.role {
-                    AdminRole -> "Admin"
-                    UserRole -> "User"
-                  }),
                   event.on_change(fn(value) {
                     case value {
                       "Admin" ->
@@ -746,8 +742,14 @@ fn view_edit_user_dialog(model: Model) -> Element(Msg) {
                   }),
                 ],
                 [
-                  html.option([], "User"),
-                  html.option([], "Admin"),
+                  html.option(
+                    [attribute.selected(model.edit_user_form.role == UserRole)],
+                    "User",
+                  ),
+                  html.option(
+                    [attribute.selected(model.edit_user_form.role == AdminRole)],
+                    "Admin",
+                  ),
                 ],
               ),
             ]),

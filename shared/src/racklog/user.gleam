@@ -1,5 +1,6 @@
 import gleam/dynamic/decode
 import gleam/json
+import gleam/string
 import gleam/time/duration
 import gleam/time/timestamp.{type Timestamp}
 
@@ -111,4 +112,21 @@ pub fn to_json(user: UserDto) -> json.Json {
       json.string(timestamp.to_rfc3339(user.updated_at, duration.seconds(0))),
     ),
   ])
+}
+
+pub type PasswordValidationError {
+  PasswordTooShort
+  PasswordTooWeak
+}
+
+pub const minimum_password_length = 8
+
+pub fn validate_password(
+  password: String,
+) -> Result(Nil, PasswordValidationError) {
+  case string.length(password) > minimum_password_length {
+    False -> Error(PasswordTooShort)
+    // TODO: use zxcvbn to check strength
+    True -> Ok(Nil)
+  }
 }

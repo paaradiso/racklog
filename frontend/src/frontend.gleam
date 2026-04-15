@@ -71,7 +71,7 @@ type Msg {
   SettingsMsg(settings.Msg)
 }
 
-fn uri_to_route(uri: Uri) -> #(Route, Effect(Msg)) {
+fn uri_to_route(uri: Uri, user: User) -> #(Route, Effect(Msg)) {
   case uri.path_segments(uri.path) {
     [] | [""] -> #(Index, effect.none())
     ["equipment"] -> {
@@ -102,8 +102,17 @@ fn uri_to_route(uri: Uri) -> #(Route, Effect(Msg)) {
       }
     }
     ["settings"] -> {
-      let #(model, fx) = settings.init()
-      #(Settings(model), effect.map(fx, SettingsMsg))
+      case user {
+        LoggedIn(user) -> {
+          let #(model, fx) = settings.init(user)
+          #(Settings(model), effect.map(fx, SettingsMsg))
+        }
+        Loading -> #(NotFound(uri:), effect.none())
+        LoggedOut -> #(
+          NotFound(uri:),
+          modem.replace(path_to_url(LoginPath), None, None),
+        )
+      }
     }
     _ -> #(NotFound(uri:), effect.none())
   }
@@ -128,7 +137,7 @@ fn href(path: Path) -> Attribute(msg) {
 fn init(_) -> #(Model, Effect(Msg)) {
   let uri = modem.initial_uri() |> result.unwrap(uri.empty)
   let nav_effect = modem.init(UserNavigatedTo)
-  let #(route, route_effect) = uri_to_route(uri)
+  let #(route, route_effect) = uri_to_route(uri, Loading)
   let user_effect = fetch_current_user()
   #(
     Model(route:, user: Loading),
@@ -142,10 +151,13 @@ fn fetch_current_user() -> Effect(Msg) {
 
 fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
   case msg, model.route {
-    GotCurrentUser(Ok(user)), _ -> #(
-      Model(..model, user: LoggedIn(user)),
-      effect.none(),
-    )
+    GotCurrentUser(Ok(user)), _ -> {
+      let #(route, fx) = case model.route {
+        NotFound(uri:) -> uri_to_route(uri, LoggedIn(user))
+        _ -> #(model.route, effect.none())
+      }
+      #(Model(route:, user: LoggedIn(user)), fx)
+    }
     GotCurrentUser(Error(_)), _ ->
       case model.route {
         Login(_) -> #(Model(..model, user: LoggedOut), effect.none())
@@ -155,7 +167,7 @@ fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
         )
       }
     UserNavigatedTo(uri), _ -> {
-      let #(route, fx) = uri_to_route(uri)
+      let #(route, fx) = uri_to_route(uri, model.user)
       let redirect_effect = case route, model.user {
         Login(_), LoggedIn(_) -> modem.replace("/", None, None)
         _, _ -> effect.none()
