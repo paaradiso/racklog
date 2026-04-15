@@ -101,7 +101,7 @@ pub fn main() {
       connection,
       "admin",
       "admin@example.com",
-      auth.hash_password("abc123abc"),
+      auth.hash_password("adminadmin"),
       auth_sql.Admin,
     )
   {

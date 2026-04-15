@@ -1,12 +1,14 @@
 import argus
 import auth/sql
 import gleam/dynamic/decode
+import gleam/http/response
 import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/time/timestamp
+import middleware
 import racklog/user.{type AppUserRole, type PreferredUnit}
 import web.{type Context}
 import wisp.{type Request, type Response}
@@ -34,6 +36,7 @@ pub type UpdateUserPayload {
     username: String,
     email: String,
     password: String,
+    current_password: Option(String),
     user_role: Option(AppUserRole),
     preferred_unit: Option(PreferredUnit),
   )
@@ -43,6 +46,11 @@ fn update_user_payload_decoder() -> decode.Decoder(UpdateUserPayload) {
   use username <- decode.optional_field("username", "", decode.string)
   use email <- decode.optional_field("email", "", decode.string)
   use password <- decode.optional_field("password", "", decode.string)
+  use current_password <- decode.optional_field(
+    "current_password",
+    None,
+    decode.optional(decode.string),
+  )
   use user_role <- decode.optional_field(
     "user_role",
     None,
@@ -58,6 +66,7 @@ fn update_user_payload_decoder() -> decode.Decoder(UpdateUserPayload) {
     username:,
     email:,
     password:,
+    current_password:,
     user_role:,
     preferred_unit:,
   ))
@@ -304,8 +313,9 @@ pub fn list_users(_req: Request, ctx: Context) -> Response {
 pub fn delete_user_by_id(_req: Request, ctx: Context, id: String) -> Response {
   case int.parse(id) {
     Error(_) -> wisp.bad_request("Invalid Id")
-    Ok(parsed_id) -> {
-      case sql.delete_user_by_id(ctx.db, parsed_id) {
+    Ok(id) -> {
+      use _ <- middleware.is_authorised_user(ctx, id)
+      case sql.delete_user_by_id(ctx.db, id) {
         Ok(_) -> wisp.no_content()
         Error(_) -> wisp.internal_server_error()
       }
@@ -314,68 +324,142 @@ pub fn delete_user_by_id(_req: Request, ctx: Context, id: String) -> Response {
 }
 
 pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
-  use json <- wisp.require_json(req)
+  case int.parse(id) {
+    Error(_) -> wisp.bad_request("Invalid Id")
+    Ok(id) -> {
+      use _ <- middleware.is_authorised_user(ctx, id)
+      use json <- wisp.require_json(req)
 
-  let update_user_result = {
-    use id <- result.try(
-      int.parse(id)
-      |> result.map_error(fn(_) { wisp.bad_request("Invalid Id") }),
-    )
+      let update_user_result = {
+        use payload <- result.try(
+          decode.run(json, update_user_payload_decoder())
+          |> result.map_error(fn(_) { wisp.unprocessable_content() }),
+        )
 
-    use payload <- result.try(
-      decode.run(json, update_user_payload_decoder())
-      |> result.map_error(fn(_) { wisp.unprocessable_content() }),
-    )
+        use _ <- result.try(
+          case
+            is_admin(ctx, ctx.user_id),
+            payload.password,
+            payload.email,
+            payload.current_password
+          {
+            True, _, _, _ -> Ok(Nil)
+            False, "", "", _ -> Ok(Nil)
+            False, _, _, None ->
+              Error(
+                wisp.response(400)
+                |> wisp.string_body("current_password is required"),
+              )
+            _, _, _, Some(current) -> verify_current_password(ctx, id, current)
+          },
+        )
 
-    let hashed_password = case payload.password {
-      "" -> ""
-      password -> hash_password(password)
+        use _ <- result.try(case payload.password {
+          "" -> Ok(Nil)
+          password ->
+            user.validate_password(password)
+            |> result.map_error(fn(error) {
+              wisp.response(400)
+              |> wisp.string_body(user.password_validation_error_to_string(
+                error,
+              ))
+            })
+        })
+
+        let hashed_password = case payload.password {
+          "" -> ""
+          password -> hash_password(password)
+        }
+
+        let role_string = case payload.user_role {
+          Some(role) -> user.role_to_string(role)
+          None -> ""
+        }
+
+        let preferred_unit_string = case payload.preferred_unit {
+          Some(preferred_unit) -> user.preferred_unit_to_string(preferred_unit)
+          None -> ""
+        }
+
+        use returned <- result.try(
+          sql.update_user_by_id(
+            ctx.db,
+            payload.username,
+            payload.email,
+            hashed_password,
+            role_string,
+            preferred_unit_string,
+            id,
+          )
+          |> result.map_error(fn(_) { wisp.internal_server_error() }),
+        )
+
+        use user <- result.try(
+          list.first(returned.rows)
+          |> result.map_error(fn(_) { wisp.not_found() }),
+        )
+
+        Ok(
+          row_to_dto(
+            user.id,
+            user.username,
+            user.email,
+            user.user_role,
+            user.preferred_unit,
+            user.created_at,
+            user.updated_at,
+          )
+          |> user.to_json
+          |> json.to_string
+          |> wisp.json_response(200),
+        )
+      }
+
+      case update_user_result {
+        Ok(user) -> user
+        Error(error) -> error
+      }
     }
-
-    let role_string = case payload.user_role {
-      Some(role) -> user.role_to_string(role)
-      None -> ""
-    }
-
-    let preferred_unit_string = case payload.preferred_unit {
-      Some(preferred_unit) -> user.preferred_unit_to_string(preferred_unit)
-      None -> ""
-    }
-
-    use returned <- result.try(
-      sql.update_user_by_id(
-        ctx.db,
-        payload.username,
-        payload.email,
-        hashed_password,
-        role_string,
-        preferred_unit_string,
-        id,
-      )
-      |> result.map_error(fn(_) { wisp.internal_server_error() }),
-    )
-
-    use user <- result.try(
-      list.first(returned.rows) |> result.map_error(fn(_) { wisp.not_found() }),
-    )
-
-    Ok(
-      row_to_dto(
-        user.id,
-        user.username,
-        user.email,
-        user.user_role,
-        user.preferred_unit,
-        user.created_at,
-        user.updated_at,
-      )
-      |> user.to_json
-      |> json.to_string
-      |> wisp.json_response(200),
-    )
   }
-  case update_user_result {
-    Ok(user) -> user
-    Error(error) -> error
+}
+
+fn verify_current_password(
+  ctx: Context,
+  id: Int,
+  current_password: String,
+) -> Result(Nil, response.Response(wisp.Body)) {
+  use returned <- result.try(
+    sql.get_user_by_id(ctx.db, id)
+    |> result.map_error(fn(_) { wisp.internal_server_error() }),
+  )
+  use user <- result.try(
+    list.first(returned.rows)
+    |> result.map_error(fn(_) { wisp.not_found() }),
+  )
+  use valid <- result.try(
+    argus.verify(user.hashed_password, current_password)
+    |> result.map_error(fn(_) { wisp.internal_server_error() }),
+  )
+  case valid {
+    True -> Ok(Nil)
+    False ->
+      Error(
+        wisp.response(401) |> wisp.string_body("Incorrect current password."),
+      )
+  }
+}
+
+fn is_admin(ctx: Context, user_id: Option(Int)) -> Bool {
+  case user_id {
+    None -> False
+    Some(id) -> {
+      case sql.get_current_user(ctx.db, id) {
+        Ok(returned) ->
+          list.first(returned.rows)
+          |> result.map(fn(u) { u.user_role == sql.Admin })
+          |> result.unwrap(False)
+        Error(_) -> False
+      }
+    }
   }
 }

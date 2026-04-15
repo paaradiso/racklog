@@ -25,3 +25,30 @@ pub fn require_auth(ctx: Context, next: fn(Int) -> Response) -> Response {
     Some(user_id) -> next(user_id)
   }
 }
+
+pub fn is_authorised_user(
+  ctx: Context,
+  req_user_id: Int,
+  next: fn(Int) -> Response,
+) -> Response {
+  use user_id <- require_auth(ctx)
+
+  let has_permission = case req_user_id == user_id {
+    True -> True
+    False -> {
+      case auth_sql.get_current_user(ctx.db, user_id) {
+        Ok(returned) ->
+          case list.first(returned.rows) {
+            Ok(user) -> user.user_role == auth_sql.Admin
+            Error(_) -> False
+          }
+        Error(_) -> False
+      }
+    }
+  }
+
+  case has_permission {
+    True -> next(user_id)
+    False -> wisp.response(403)
+  }
+}

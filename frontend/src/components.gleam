@@ -24,7 +24,7 @@ pub fn button_classes(variant: ButtonVariant) -> List(Attribute(_)) {
 
   [
     attribute.class(
-      "flex gap-2 justify-center items-center py-1.5 px-3 font-medium rounded-lg transition-colors cursor-pointer focus:ring-2 focus:ring-offset-2 focus:outline-none focus:ring-ring",
+      "flex gap-2 justify-center items-center py-1.5 px-3 font-medium rounded-lg transition-colors cursor-pointer focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:pointer-events-none focus:ring-ring",
     ),
     attribute.class(variant_styles),
   ]
