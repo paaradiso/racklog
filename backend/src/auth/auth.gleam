@@ -9,6 +9,7 @@ import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/time/timestamp
 import middleware
+import pog
 import racklog/user.{type AppUserRole, type PreferredUnit}
 import web.{type Context}
 import wisp.{type Request, type Response}
@@ -140,18 +141,18 @@ pub fn login(req: Request, ctx: Context) -> Response {
   let auth_result = {
     use #(username, password) <- result.try(
       decode.run(json, user_credentials_decoder())
-      |> result.map_error(fn(_) { wisp.unprocessable_content() }),
+      |> result.replace_error(wisp.unprocessable_content()),
     )
     use returned <- result.try(
       sql.get_user_by_username(ctx.db, username)
-      |> result.map_error(fn(_) { wisp.internal_server_error() }),
+      |> result.replace_error(wisp.internal_server_error()),
     )
     use user <- result.try(
-      list.first(returned.rows) |> result.map_error(fn(_) { wisp.not_found() }),
+      list.first(returned.rows) |> result.replace_error(wisp.not_found()),
     )
     use valid <- result.try(
       argus.verify(user.hashed_password, password)
-      |> result.map_error(fn(_) { wisp.response(401) }),
+      |> result.replace_error(wisp.response(401)),
     )
     use _ <- result.try(case valid {
       False -> Error(wisp.response(401))
@@ -160,7 +161,7 @@ pub fn login(req: Request, ctx: Context) -> Response {
     let session_id = uuid.v7() |> uuid.to_string
     use _ <- result.try(
       sql.create_session(ctx.db, session_id, user.id)
-      |> result.map_error(fn(_) { wisp.internal_server_error() }),
+      |> result.replace_error(wisp.internal_server_error()),
     )
     Ok(session_id)
   }
@@ -180,22 +181,11 @@ pub fn login(req: Request, ctx: Context) -> Response {
 }
 
 pub fn logout(req: Request, ctx: Context) -> Response {
-  let logout_result = {
-    use session_id <- result.try(
-      wisp.get_cookie(req, "session_id", wisp.Signed)
-      |> result.map_error(fn(_) { wisp.response(401) }),
-    )
+  use session_id <- middleware.require_session(ctx)
 
-    use _ <- result.try(
-      sql.delete_session_by_id(ctx.db, session_id)
-      |> result.map_error(fn(_) { wisp.internal_server_error() }),
-    )
-    Ok(Nil)
-  }
-
-  case logout_result {
-    Error(response) -> response
-    Ok(Nil) ->
+  case sql.delete_session_by_id(ctx.db, session_id) {
+    Error(_) -> wisp.internal_server_error()
+    Ok(_) ->
       wisp.response(200)
       |> wisp.set_cookie(
         req,
@@ -213,7 +203,7 @@ pub fn create_user(req: Request, ctx: Context) -> Response {
   let create_user_result = {
     use user_details <- result.try(
       decode.run(json, create_user_payload_decoder())
-      |> result.map_error(fn(_) { wisp.unprocessable_content() }),
+      |> result.replace_error(wisp.unprocessable_content()),
     )
 
     let hashed_password = hash_password(user_details.password)
@@ -226,11 +216,12 @@ pub fn create_user(req: Request, ctx: Context) -> Response {
         hashed_password,
         shared_role_to_sql_role(user_details.user_role),
       )
-      |> result.map_error(fn(_) { wisp.internal_server_error() }),
+      |> result.replace_error(wisp.internal_server_error()),
     )
 
     use user <- result.try(
-      list.first(returned.rows) |> result.map_error(fn(_) { wisp.not_found() }),
+      list.first(returned.rows)
+      |> result.replace_error(wisp.not_found()),
     )
 
     Ok(
@@ -249,44 +240,36 @@ pub fn create_user(req: Request, ctx: Context) -> Response {
     )
   }
   case create_user_result {
-    Ok(user) -> user
-    Error(error) -> error
+    Ok(value) | Error(value) -> value
   }
 }
 
 pub fn me(_req: Request, ctx: Context) -> Response {
-  case ctx.user_id {
-    None -> Error(wisp.response(401))
-    Some(user_id) -> {
-      use returned <- result.try(
-        sql.get_current_user(ctx.db, user_id)
-        |> result.map_error(fn(_) { wisp.internal_server_error() }),
+  use user_id <- middleware.require_authentication(ctx)
+
+  case sql.get_user_by_id(ctx.db, user_id) {
+    Ok(pog.Returned(rows: [user], ..)) ->
+      row_to_dto(
+        user.id,
+        user.username,
+        user.email,
+        user.user_role,
+        user.preferred_unit,
+        user.created_at,
+        user.updated_at,
       )
-      use user <- result.try(
-        returned.rows
-        |> list.first
-        |> result.map_error(fn(_) { wisp.response(401) }),
-      )
-      Ok(
-        row_to_dto(
-          user.id,
-          user.username,
-          user.email,
-          user.user_role,
-          user.preferred_unit,
-          user.created_at,
-          user.updated_at,
-        )
-        |> user.to_json
-        |> json.to_string
-        |> wisp.json_response(200),
-      )
-    }
+      |> user.to_json
+      |> json.to_string
+      |> wisp.json_response(200)
+    Ok(pog.Returned(rows: [_, _, ..], ..)) ->
+      panic as "multiple users returned for one user id"
+    _ -> wisp.response(401)
   }
-  |> result.unwrap(wisp.response(401))
 }
 
 pub fn list_users(_req: Request, ctx: Context) -> Response {
+  use <- middleware.require_admin(ctx)
+
   case sql.list_users(ctx.db) {
     Ok(returned) ->
       returned.rows
@@ -304,122 +287,110 @@ pub fn list_users(_req: Request, ctx: Context) -> Response {
       })
       |> json.to_string
       |> wisp.json_response(200)
-    Error(_) -> {
-      wisp.internal_server_error()
-    }
+    Error(_) -> wisp.internal_server_error()
   }
 }
 
 pub fn delete_user_by_id(_req: Request, ctx: Context, id: String) -> Response {
-  case int.parse(id) {
-    Error(_) -> wisp.bad_request("Invalid Id")
-    Ok(id) -> {
-      use _ <- middleware.is_authorised_user(ctx, id)
-      case sql.delete_user_by_id(ctx.db, id) {
-        Ok(_) -> wisp.no_content()
-        Error(_) -> wisp.internal_server_error()
-      }
-    }
+  use id <- middleware.require_valid_id(id)
+  use _ <- middleware.require_authorisation(ctx, id)
+
+  case sql.delete_user_by_id(ctx.db, id) {
+    Ok(_) -> wisp.no_content()
+    Error(_) -> wisp.internal_server_error()
   }
 }
 
 pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
-  case int.parse(id) {
-    Error(_) -> wisp.bad_request("Invalid Id")
-    Ok(id) -> {
-      use _ <- middleware.is_authorised_user(ctx, id)
-      use json <- wisp.require_json(req)
+  use id <- middleware.require_valid_id(id)
+  use _ <- middleware.require_authorisation(ctx, id)
+  use json <- wisp.require_json(req)
 
-      let update_user_result = {
-        use payload <- result.try(
-          decode.run(json, update_user_payload_decoder())
-          |> result.map_error(fn(_) { wisp.unprocessable_content() }),
-        )
+  let update_user_result = {
+    use payload <- result.try(
+      decode.run(json, update_user_payload_decoder())
+      |> result.replace_error(wisp.unprocessable_content()),
+    )
 
-        use _ <- result.try(
-          case
-            is_admin(ctx, ctx.user_id),
-            payload.password,
-            payload.email,
-            payload.current_password
-          {
-            True, _, _, _ -> Ok(Nil)
-            False, "", "", _ -> Ok(Nil)
-            False, _, _, None ->
-              Error(
-                wisp.response(400)
-                |> wisp.string_body("current_password is required"),
-              )
-            _, _, _, Some(current) -> verify_current_password(ctx, id, current)
-          },
-        )
+    use _ <- result.try(
+      case
+        is_admin(ctx, ctx.user_id),
+        payload.password,
+        payload.email,
+        payload.current_password
+      {
+        True, _, _, _ -> Ok(Nil)
+        False, "", "", _ -> Ok(Nil)
+        False, _, _, None ->
+          Error(
+            wisp.response(400)
+            |> wisp.string_body("current_password is required"),
+          )
+        _, _, _, Some(current) -> verify_current_password(ctx, id, current)
+      },
+    )
 
-        use _ <- result.try(case payload.password {
-          "" -> Ok(Nil)
-          password ->
-            user.validate_password(password)
-            |> result.map_error(fn(error) {
-              wisp.response(400)
-              |> wisp.string_body(user.password_validation_error_to_string(
-                error,
-              ))
-            })
+    use _ <- result.try(case payload.password {
+      "" -> Ok(Nil)
+      password ->
+        user.validate_password(password)
+        |> result.map_error(fn(error) {
+          wisp.response(400)
+          |> wisp.string_body(user.password_validation_error_to_string(error))
         })
+    })
 
-        let hashed_password = case payload.password {
-          "" -> ""
-          password -> hash_password(password)
-        }
-
-        let role_string = case payload.user_role {
-          Some(role) -> user.role_to_string(role)
-          None -> ""
-        }
-
-        let preferred_unit_string = case payload.preferred_unit {
-          Some(preferred_unit) -> user.preferred_unit_to_string(preferred_unit)
-          None -> ""
-        }
-
-        use returned <- result.try(
-          sql.update_user_by_id(
-            ctx.db,
-            payload.username,
-            payload.email,
-            hashed_password,
-            role_string,
-            preferred_unit_string,
-            id,
-          )
-          |> result.map_error(fn(_) { wisp.internal_server_error() }),
-        )
-
-        use user <- result.try(
-          list.first(returned.rows)
-          |> result.map_error(fn(_) { wisp.not_found() }),
-        )
-
-        Ok(
-          row_to_dto(
-            user.id,
-            user.username,
-            user.email,
-            user.user_role,
-            user.preferred_unit,
-            user.created_at,
-            user.updated_at,
-          )
-          |> user.to_json
-          |> json.to_string
-          |> wisp.json_response(200),
-        )
-      }
-
-      case update_user_result {
-        Ok(user) -> user
-        Error(error) -> error
-      }
+    let hashed_password = case payload.password {
+      "" -> ""
+      password -> hash_password(password)
     }
+
+    let role_string = case payload.user_role {
+      Some(role) -> user.role_to_string(role)
+      None -> ""
+    }
+
+    let preferred_unit_string = case payload.preferred_unit {
+      Some(preferred_unit) -> user.preferred_unit_to_string(preferred_unit)
+      None -> ""
+    }
+
+    use returned <- result.try(
+      sql.update_user_by_id(
+        ctx.db,
+        payload.username,
+        payload.email,
+        hashed_password,
+        role_string,
+        preferred_unit_string,
+        id,
+      )
+      |> result.replace_error(wisp.internal_server_error()),
+    )
+
+    use user <- result.try(
+      list.first(returned.rows)
+      |> result.replace_error(wisp.not_found()),
+    )
+
+    Ok(
+      row_to_dto(
+        user.id,
+        user.username,
+        user.email,
+        user.user_role,
+        user.preferred_unit,
+        user.created_at,
+        user.updated_at,
+      )
+      |> user.to_json
+      |> json.to_string
+      |> wisp.json_response(200),
+    )
+  }
+
+  case update_user_result {
+    Ok(user) | Error(user) -> user
   }
 }
 
@@ -430,15 +401,15 @@ fn verify_current_password(
 ) -> Result(Nil, response.Response(wisp.Body)) {
   use returned <- result.try(
     sql.get_user_by_id(ctx.db, id)
-    |> result.map_error(fn(_) { wisp.internal_server_error() }),
+    |> result.replace_error(wisp.internal_server_error()),
   )
   use user <- result.try(
     list.first(returned.rows)
-    |> result.map_error(fn(_) { wisp.not_found() }),
+    |> result.replace_error(wisp.not_found()),
   )
   use valid <- result.try(
     argus.verify(user.hashed_password, current_password)
-    |> result.map_error(fn(_) { wisp.internal_server_error() }),
+    |> result.replace_error(wisp.internal_server_error()),
   )
   case valid {
     True -> Ok(Nil)
@@ -453,7 +424,7 @@ fn is_admin(ctx: Context, user_id: Option(Int)) -> Bool {
   case user_id {
     None -> False
     Some(id) -> {
-      case sql.get_current_user(ctx.db, id) {
+      case sql.get_user_by_id(ctx.db, id) {
         Ok(returned) ->
           list.first(returned.rows)
           |> result.map(fn(u) { u.user_role == sql.Admin })

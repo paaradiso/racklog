@@ -20,7 +20,7 @@ pub fn handle_request(req: Request, ctx: Context) -> Response {
 }
 
 fn handle_authenticated(req: Request, ctx: Context) -> Response {
-  use _user_id <- middleware.require_auth(ctx)
+  use _user_id <- middleware.require_authentication(ctx)
 
   case req.method, wisp.path_segments(req) {
     Post, ["api", "logout"] -> auth.logout(req, ctx)
