@@ -1,4 +1,4 @@
-import components.{ButtonOutline}
+import components
 import gleam/http/response
 
 import gleam/json
@@ -14,7 +14,7 @@ import lustre/element.{type Element}
 import lustre/element/html
 import lustre/event
 import modem
-import racklog/user.{type UserDto}
+import racklog/user.{type UserDto, AdminRole, UserRole}
 import route/admin
 import route/equipment
 import route/exercises
@@ -71,6 +71,36 @@ type Msg {
   SettingsMsg(settings.Msg)
 }
 
+fn require_authentication(
+  user: User,
+  uri: Uri,
+  next: fn(UserDto) -> #(Route, Effect(Msg)),
+) -> #(Route, Effect(Msg)) {
+  case user {
+    LoggedIn(u) -> next(u)
+    Loading -> #(NotFound(uri:), effect.none())
+    LoggedOut -> #(
+      NotFound(uri:),
+      modem.replace(path_to_url(LoginPath), None, None),
+    )
+  }
+}
+
+fn require_admin(
+  user: User,
+  uri: Uri,
+  next: fn(UserDto) -> #(Route, Effect(Msg)),
+) -> #(Route, Effect(Msg)) {
+  use u <- require_authentication(user, uri)
+  case u.role {
+    user.AdminRole -> next(u)
+    user.UserRole -> #(
+      NotFound(uri:),
+      modem.replace(path_to_url(IndexPath), None, None),
+    )
+  }
+}
+
 fn uri_to_route(uri: Uri, user: User) -> #(Route, Effect(Msg)) {
   case uri.path_segments(uri.path) {
     [] | [""] -> #(Index, effect.none())
@@ -87,32 +117,26 @@ fn uri_to_route(uri: Uri, user: User) -> #(Route, Effect(Msg)) {
       #(Login(model), effect.map(fx, LoginMsg))
     }
     ["admin"] | ["admin", ""] -> {
+      use _ <- require_admin(user, uri)
       #(Admin(admin.init().0), modem.replace("/admin/general", None, None))
     }
-
     ["admin", tab] -> {
+      use _ <- require_admin(user, uri)
       case admin.tab_name_to_tab(tab) {
         Some(tab) -> {
           let #(model, fx) = admin.init_with_tab(tab)
           #(Admin(model), effect.map(fx, AdminMsg))
         }
-        None -> {
-          #(Admin(admin.init().0), modem.replace("/admin/general", None, None))
-        }
+        None -> #(
+          Admin(admin.init().0),
+          modem.replace("/admin/general", None, None),
+        )
       }
     }
     ["settings"] -> {
-      case user {
-        LoggedIn(user) -> {
-          let #(model, fx) = settings.init(user)
-          #(Settings(model), effect.map(fx, SettingsMsg))
-        }
-        Loading -> #(NotFound(uri:), effect.none())
-        LoggedOut -> #(
-          NotFound(uri:),
-          modem.replace(path_to_url(LoginPath), None, None),
-        )
-      }
+      use user <- require_authentication(user, uri)
+      let #(model, fx) = settings.init(user)
+      #(Settings(model), effect.map(fx, SettingsMsg))
     }
     _ -> #(NotFound(uri:), effect.none())
   }
@@ -326,16 +350,20 @@ fn view_header(user: UserDto) -> Element(Msg) {
               attribute.class("flex gap-4 items-center"),
             ],
             [
-              html.a(
-                [
-                  href(AdminPath),
+              case user.role {
+                AdminRole ->
+                  html.a(
+                    [
+                      href(AdminPath),
 
-                  attribute.title("Admin"),
-                ],
-                [
-                  lucide_lustre.settings([attribute.class("size-5")]),
-                ],
-              ),
+                      attribute.title("Admin"),
+                    ],
+                    [
+                      lucide_lustre.settings([attribute.class("size-5")]),
+                    ],
+                  )
+                UserRole -> element.none()
+              },
               components.dropdown(
                 trigger: [
                   lucide_lustre.circle_user_round([attribute.class("size-5")]),
