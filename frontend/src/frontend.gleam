@@ -178,6 +178,10 @@ fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
     GotCurrentUser(Ok(user)), _ -> {
       let #(route, fx) = case model.route {
         NotFound(uri:) -> uri_to_route(uri, LoggedIn(user))
+        Login(_) -> #(
+          model.route,
+          modem.push(path_to_url(IndexPath), None, None),
+        )
         _ -> #(model.route, effect.none())
       }
       #(Model(route:, user: LoggedIn(user)), fx)
