@@ -39,10 +39,6 @@ pub type Msg {
   UpdatedSecurityForm(SecurityForm)
   SubmittedSecurityForm
   SavedSecurityForm(Result(UserDto, rsvp.Error))
-
-  UpdatedPreferencesForm(PreferencesForm)
-  SubmittedPreferencesForm
-  SavedPreferencesForm(Result(UserDto, rsvp.Error))
 }
 
 fn init_security_form(user: UserDto) -> SecurityForm {
@@ -132,54 +128,6 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
         SecurityForm(..model.security_form, error: "Failed to save settings.")
       #(
         Model(..model, security_form:),
-        fx.toast(
-          title: "Error",
-          description: "Failed to save settings.",
-          variant: toast.Danger,
-        ),
-      )
-    }
-
-    UpdatedPreferencesForm(preferences_form) -> #(
-      Model(..model, preferences_form:),
-      effect.none(),
-    )
-    SubmittedPreferencesForm -> {
-      let fx =
-        rsvp.patch(
-          "/api/users/" <> int.to_string(model.user.id),
-          json.object([
-            #(
-              "preferred_unit",
-              json.string(user.preferred_unit_to_string(
-                model.preferences_form.preferred_unit,
-              )),
-            ),
-          ]),
-          rsvp.expect_json(user.decoder(), SavedPreferencesForm),
-        )
-      #(model, fx)
-    }
-    SavedPreferencesForm(Ok(user)) -> {
-      #(
-        Model(..model, user:, preferences_form: init_preferences_form(user)),
-        effect.batch([
-          fx.toast(
-            title: "Success",
-            description: "Saved preferences.",
-            variant: toast.Success,
-          ),
-        ]),
-      )
-    }
-    SavedPreferencesForm(Error(_)) -> {
-      let preferences_form =
-        PreferencesForm(
-          ..model.preferences_form,
-          error: "Failed to save preferences.",
-        )
-      #(
-        Model(..model, preferences_form:),
         fx.toast(
           title: "Error",
           description: "Failed to save settings.",
@@ -307,8 +255,12 @@ pub fn view(model: Model) -> List(Element(Msg)) {
           html.form(
             [
               attribute.id("preferences_form"),
-              event.on_submit(fn(_) { SubmittedPreferencesForm })
-                |> event.prevent_default,
+              attribute.action(
+                "/api/users/"
+                <> int.to_string(model.user.id)
+                <> "?_method=PATCH",
+              ),
+              attribute.method("POST"),
             ],
             [
               html.div([attribute.class("flex flex-col gap-2")], [
@@ -328,32 +280,15 @@ pub fn view(model: Model) -> List(Element(Msg)) {
                   ),
                   html.select(
                     [
-                      attribute.id("preferred_unit_select"),
+                      attribute.name("preferred_unit"),
                       attribute.class(
                         "py-2 px-3 w-full rounded-md border focus:border-transparent focus:ring-2 focus:outline-none border-input-border placeholder:text-muted-foreground focus:ring-ring",
                       ),
-                      event.on_change(fn(value) {
-                        case value {
-                          "Kg" ->
-                            UpdatedPreferencesForm(
-                              PreferencesForm(
-                                ..model.preferences_form,
-                                preferred_unit: Kg,
-                              ),
-                            )
-                          _ ->
-                            UpdatedPreferencesForm(
-                              PreferencesForm(
-                                ..model.preferences_form,
-                                preferred_unit: Lb,
-                              ),
-                            )
-                        }
-                      }),
                     ],
                     [
                       html.option(
                         [
+                          attribute.value("Kg"),
                           attribute.selected(
                             model.preferences_form.preferred_unit == Kg,
                           ),
@@ -362,6 +297,7 @@ pub fn view(model: Model) -> List(Element(Msg)) {
                       ),
                       html.option(
                         [
+                          attribute.value("Lb"),
                           attribute.selected(
                             model.preferences_form.preferred_unit == Lb,
                           ),
