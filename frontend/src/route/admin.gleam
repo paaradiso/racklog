@@ -1,7 +1,6 @@
 import components.{ButtonDanger, ButtonOutline, ButtonPrimary, ButtonSecondary}
 import fx
 import glaze/oat/dialog
-import glaze/oat/sidebar
 import glaze/oat/toast
 import gleam/int
 import gleam/json
@@ -355,28 +354,29 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
 
 pub fn view(model: Model) -> List(Element(Msg)) {
   [
-    sidebar.sidebar_always(
-      html.div,
-      [attribute.class("flex flex-row w-full h-full")],
+    html.aside(
       [
-        sidebar.aside([attribute.class("w-64 bg-card")], [
-          sidebar.nav([attribute.class("flex flex-col p-0 text-md")], [
-            view_sidebar_button(model.active_tab, GeneralTab, "General"),
-            view_sidebar_button(model.active_tab, UsersTab, "Users"),
-          ]),
-        ]),
-
-        html.main(
-          [
-            attribute.class("flex-1 p-4 bg-background text-foreground"),
-          ],
-          [
-            case model.active_tab {
-              GeneralTab -> view_general_tab(model)
-              UsersTab -> view_users_tab(model)
-            },
-          ],
+        attribute.class(
+          "flex z-10 w-64 h-full border shadow bg-card border-border",
         ),
+      ],
+      [
+        html.nav([attribute.class("flex flex-col p-0 w-full text-md")], [
+          view_sidebar_button(model.active_tab, GeneralTab, "General"),
+          view_sidebar_button(model.active_tab, UsersTab, "Users"),
+        ]),
+      ],
+    ),
+
+    html.main(
+      [
+        attribute.class("flex-1 p-4 bg-background text-foreground"),
+      ],
+      [
+        case model.active_tab {
+          GeneralTab -> view_general_tab(model)
+          UsersTab -> view_users_tab(model)
+        },
       ],
     ),
   ]
