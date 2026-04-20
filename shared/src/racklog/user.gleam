@@ -115,6 +115,12 @@ pub fn to_json(user: UserDto) -> json.Json {
   ])
 }
 
+pub fn field_error_decoder() -> decode.Decoder(#(String, String)) {
+  use field <- decode.field("field", decode.string)
+  use message <- decode.field("message", decode.string)
+  decode.success(#(field, message))
+}
+
 pub const minimum_password_length = 8
 
 pub type PasswordValidationError {

@@ -5,6 +5,7 @@ import glaze/oat/toast
 import gleam/int
 import gleam/json
 import gleam/list
+import gleam/option
 import gleam/string
 import lustre/attribute
 import lustre/effect.{type Effect}
@@ -20,7 +21,7 @@ pub type SecurityData {
   SecurityData(
     email: String,
     current_password: String,
-    new_password: String,
+    password: String,
     confirm_password: String,
   )
 }
@@ -48,17 +49,28 @@ pub type Msg {
 fn init_security_form(user: UserDto) -> Form(SecurityData) {
   form.new({
     use email <- form.field("email", form.parse_string)
-    use current_password <- form.field("current_password", form.parse_string)
-    use new_password <- form.field("new_password", form.parse_string)
+    use password <- form.field(
+      "password",
+      form.parse_optional(
+        form.parse_string
+        |> form.check_string_length_more_than(user.minimum_password_length - 1),
+      )
+        |> form.map(option.unwrap(_, "")),
+    )
     use confirm_password <- form.field(
       "confirm_password",
-      form.parse_string |> form.check_confirms(new_password),
+      form.parse_optional(
+        form.parse_string
+        |> form.check_confirms(password),
+      )
+        |> form.map(option.unwrap(_, "")),
     )
+    use current_password <- form.field("current_password", form.parse_string)
     form.success(SecurityData(
       email:,
-      current_password:,
-      new_password:,
+      password:,
       confirm_password:,
+      current_password:,
     ))
   })
   |> form.add_string("email", user.email)
@@ -112,11 +124,18 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
               json.object([
                 #("email", json.string(data.email)),
                 #("current_password", json.string(data.current_password)),
-                #("password", json.string(data.new_password)),
+                #("password", json.string(data.password)),
               ]),
               rsvp.expect_json(user.decoder(), SavedSecurityForm),
             )
-          #(Model(..model, security_error: ""), fx)
+          #(
+            Model(
+              ..model,
+              security_error: "",
+              security_form: init_security_form(model.user),
+            ),
+            fx,
+          )
         }
       }
     }
@@ -136,6 +155,18 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
     SavedSecurityForm(Error(rsvp.HttpError(response)))
       if response.status == 400 || response.status == 401
     -> #(Model(..model, security_error: response.body), effect.none())
+    SavedSecurityForm(Error(rsvp.HttpError(response)))
+      if response.status == 422 || response.status == 409
+    -> {
+      let security_form = case
+        json.parse(response.body, user.field_error_decoder())
+      {
+        Ok(#(field, message)) ->
+          form.add_error(model.security_form, field, form.CustomError(message))
+        Error(_) -> model.security_form
+      }
+      #(Model(..model, security_form:), effect.none())
+    }
     SavedSecurityForm(Error(_)) -> #(
       Model(..model, security_error: "Failed to save settings."),
       fx.toast(
@@ -144,7 +175,6 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
         variant: toast.Danger,
       ),
     )
-
     SubmittedPreferencesForm(Ok(preferences)) -> {
       let fx =
         rsvp.patch(
@@ -226,7 +256,7 @@ pub fn view(model: Model) -> List(Element(Msg)) {
                 components.formal_input(
                   form: model.security_form,
                   is: "password",
-                  name: "new_password",
+                  name: "password",
                   label: "New Password",
                   attributes: [],
                 ),
@@ -350,16 +380,15 @@ fn validate_security_data(
   case
     user.role,
     data.email != user.email,
-    data.new_password != "" || data.confirm_password != "",
+    data.password != "" || data.confirm_password != "",
     data.current_password
   {
     _, False, False, _ -> Ok(Nil)
-    UserRole, True, _, "" ->
-      Error("Current password is required to change email.")
-    UserRole, _, True, "" ->
-      Error("Current password is required to change password.")
-    _, _, True, _ if data.new_password == "" ->
-      Error("New password is required.")
+    // UserRole, True, _, "" ->
+    //   Error("Current password is required to change email.")
+    // UserRole, _, True, "" ->
+    //   Error("Current password is required to change password.")
+    _, _, True, _ if data.password == "" -> Error("New password is required.")
     _, _, True, _ if data.confirm_password == "" ->
       Error("Please confirm your new password.")
     _, _, _, _ -> Ok(Nil)

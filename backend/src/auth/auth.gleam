@@ -2,7 +2,6 @@ import argus
 import auth/sql
 import gleam/dynamic/decode
 import gleam/http/response
-import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -322,10 +321,7 @@ pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
         True, _, _, _ -> Ok(Nil)
         False, "", "", _ -> Ok(Nil)
         False, _, _, None ->
-          Error(
-            wisp.response(400)
-            |> wisp.string_body("current_password is required"),
-          )
+          Error(field_error("current_password", "Current password is required."))
         _, _, _, Some(current) -> verify_current_password(ctx, id, current)
       },
     )
@@ -335,8 +331,10 @@ pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
       password ->
         user.validate_password(password)
         |> result.map_error(fn(error) {
-          wisp.response(400)
-          |> wisp.string_body(user.password_validation_error_to_string(error))
+          field_error(
+            "password",
+            user.password_validation_error_to_string(error),
+          )
         })
     })
 
@@ -365,7 +363,13 @@ pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
         preferred_unit_string,
         id,
       )
-      |> result.replace_error(wisp.internal_server_error()),
+      |> result.map_error(fn(e) {
+        case e {
+          pog.ConstraintViolated(_, "app_user_email_key", _) ->
+            conflict_error("email", "This email is already in use.")
+          _ -> wisp.internal_server_error()
+        }
+      }),
     )
 
     use user <- result.try(
@@ -407,16 +411,12 @@ fn verify_current_password(
     list.first(returned.rows)
     |> result.replace_error(wisp.not_found()),
   )
-  use valid <- result.try(
-    argus.verify(user.hashed_password, current_password)
-    |> result.replace_error(wisp.internal_server_error()),
-  )
-  case valid {
-    True -> Ok(Nil)
-    False ->
-      Error(
-        wisp.response(401) |> wisp.string_body("Incorrect current password."),
-      )
+
+  case argus.verify(user.hashed_password, current_password) {
+    Ok(True) -> Ok(Nil)
+    Ok(False) ->
+      Error(field_error("current_password", "Incorrect current password."))
+    Error(_) -> Error(wisp.internal_server_error())
   }
 }
 
@@ -433,4 +433,26 @@ fn is_admin(ctx: Context, user_id: Option(Int)) -> Bool {
       }
     }
   }
+}
+
+fn conflict_error(field: String, message: String) -> Response {
+  wisp.response(409)
+  |> wisp.json_body(
+    json.object([
+      #("field", json.string(field)),
+      #("message", json.string(message)),
+    ])
+    |> json.to_string,
+  )
+}
+
+fn field_error(field: String, message: String) -> Response {
+  wisp.response(422)
+  |> wisp.json_body(
+    json.object([
+      #("field", json.string(field)),
+      #("message", json.string(message)),
+    ])
+    |> json.to_string,
+  )
 }
