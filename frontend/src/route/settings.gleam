@@ -1,8 +1,11 @@
 import components.{ButtonPrimary}
+import formal/form.{type Form}
 import fx
 import glaze/oat/toast
 import gleam/int
 import gleam/json
+import gleam/list
+import gleam/string
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
@@ -23,15 +26,15 @@ pub type SecurityForm {
   )
 }
 
-pub type PreferencesForm {
-  PreferencesForm(preferred_unit: PreferredUnit, error: String)
+pub type Preferences {
+  Preferences(preferred_unit: PreferredUnit)
 }
 
 pub type Model {
   Model(
     user: UserDto,
     security_form: SecurityForm,
-    preferences_form: PreferencesForm,
+    preferences_form: Form(Preferences),
   )
 }
 
@@ -39,6 +42,8 @@ pub type Msg {
   UpdatedSecurityForm(SecurityForm)
   SubmittedSecurityForm
   SavedSecurityForm(Result(UserDto, rsvp.Error))
+  SubmittedPreferencesForm(Result(Preferences, Form(Preferences)))
+  SavedPreferencesForm(Result(UserDto, rsvp.Error))
 }
 
 fn init_security_form(user: UserDto) -> SecurityForm {
@@ -51,8 +56,24 @@ fn init_security_form(user: UserDto) -> SecurityForm {
   )
 }
 
-fn init_preferences_form(user: UserDto) -> PreferencesForm {
-  PreferencesForm(preferred_unit: user.preferred_unit, error: "")
+fn init_preferences_form(user: UserDto) -> Form(Preferences) {
+  form.new({
+    use preferred_unit <- form.field(
+      "preferred_unit",
+      form.parse(fn(values) {
+        case values {
+          ["kg", ..] -> Ok(Kg)
+          ["lb", ..] -> Ok(Lb)
+          _ -> Error(#(Kg, "Invalid unit selected. Please select kg or lb."))
+        }
+      }),
+    )
+    form.success(Preferences(preferred_unit:))
+  })
+  |> form.add_string(
+    "preferred_unit",
+    user.preferred_unit_to_string(user.preferred_unit),
+  )
 }
 
 pub fn init(user: UserDto) -> #(Model, Effect(Msg)) {
@@ -134,6 +155,41 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
           variant: toast.Danger,
         ),
       )
+    }
+    SubmittedPreferencesForm(Ok(preferences)) -> {
+      let fx =
+        rsvp.patch(
+          "/api/users/" <> int.to_string(model.user.id),
+          json.object([
+            #(
+              "preferred_unit",
+              json.string(user.preferred_unit_to_string(
+                preferences.preferred_unit,
+              )),
+            ),
+          ]),
+          rsvp.expect_json(user.decoder(), SavedPreferencesForm),
+        )
+      #(model, fx)
+    }
+    SubmittedPreferencesForm(Error(preferences_form)) -> {
+      #(Model(..model, preferences_form:), effect.none())
+    }
+    SavedPreferencesForm(Ok(user)) -> {
+      #(
+        Model(..model, user:, preferences_form: init_preferences_form(user)),
+        effect.batch([
+          fx.toast(
+            title: "Success",
+            description: "Saved preferences.",
+            variant: toast.Success,
+          ),
+        ]),
+      )
+    }
+    SavedPreferencesForm(Error(_e)) -> {
+      // fix 
+      #(model, effect.none())
     }
   }
 }
@@ -255,19 +311,15 @@ pub fn view(model: Model) -> List(Element(Msg)) {
           html.form(
             [
               attribute.id("preferences_form"),
-              attribute.action(
-                "/api/users/"
-                <> int.to_string(model.user.id)
-                <> "?_method=PATCH",
-              ),
-              attribute.method("POST"),
+              event.on_submit(fn(values) {
+                model.preferences_form
+                |> form.add_values(values)
+                |> form.run
+                |> SubmittedPreferencesForm
+              }),
             ],
             [
               html.div([attribute.class("flex flex-col gap-2")], [
-                case model.preferences_form.error {
-                  "" -> element.none()
-                  msg -> components.error_message_box(msg)
-                },
                 html.div([], [
                   html.label(
                     [
@@ -288,24 +340,43 @@ pub fn view(model: Model) -> List(Element(Msg)) {
                     [
                       html.option(
                         [
-                          attribute.value("Kg"),
+                          attribute.value("kg"),
                           attribute.selected(
-                            model.preferences_form.preferred_unit == Kg,
+                            form.field_value(
+                              model.preferences_form,
+                              "preferred_unit",
+                            )
+                            == "kg",
                           ),
                         ],
                         "Kg",
                       ),
                       html.option(
                         [
-                          attribute.value("Lb"),
+                          attribute.value("lb"),
                           attribute.selected(
-                            model.preferences_form.preferred_unit == Lb,
+                            form.field_value(
+                              model.preferences_form,
+                              "preferred_unit",
+                            )
+                            == "lb",
                           ),
                         ],
                         "Lb",
                       ),
                     ],
                   ),
+                  ..list.map(
+                    form.field_error_messages(
+                      model.preferences_form,
+                      "preferred_unit",
+                    ),
+                    fn(error_message) {
+                      html.p([attribute.class("text-sm text-destructive")], [
+                        html.text(error_message),
+                      ])
+                    },
+                  )
                 ]),
 
                 components.button(

@@ -1,3 +1,4 @@
+import formal/form.{type Form}
 import gleam/list
 import lucide_lustre
 import lustre/attribute.{type Attribute}
@@ -83,6 +84,40 @@ pub fn form_input(
       ),
       ..attributes
     ]),
+  ])
+}
+
+pub fn formal_input(
+  form form: Form(a),
+  is type_: String,
+  name name: String,
+  label label: String,
+  attributes attributes: List(Attribute(msg)),
+) -> Element(msg) {
+  let errors = form.field_error_messages(form, name)
+  html.div([], [
+    html.label(
+      [
+        attribute.for(name),
+        attribute.class(
+          "block mb-1 text-sm font-medium text-secondary-foreground",
+        ),
+      ],
+      [element.text(label)],
+    ),
+    html.input([
+      attribute.id(name),
+      attribute.name(name),
+      attribute.class(
+        "py-2 px-3 w-full rounded-md border focus:border-transparent focus:ring-2 focus:outline-none border-input-border placeholder:text-muted-foreground focus:ring-ring",
+      ),
+      ..attributes
+    ]),
+    ..list.map(errors, fn(error_message) {
+      html.p([attribute.class("mt-0.5 text-xs text-destructive")], [
+        html.text(error_message),
+      ])
+    })
   ])
 }
 

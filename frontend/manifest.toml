@@ -4,6 +4,7 @@
 packages = [
   { name = "argv", version = "1.0.2", build_tools = ["gleam"], requirements = [], otp_app = "argv", source = "hex", outer_checksum = "BA1FF0929525DEBA1CE67256E5ADF77A7CDDFE729E3E3F57A5BDCAA031DED09D" },
   { name = "filepath", version = "1.1.2", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "filepath", source = "hex", outer_checksum = "B06A9AF0BF10E51401D64B98E4B627F1D2E48C154967DA7AF4D0914780A6D40A" },
+  { name = "formal", version = "3.0.1", build_tools = ["gleam"], requirements = ["gleam_stdlib", "gleam_time"], otp_app = "formal", source = "hex", outer_checksum = "8FBEB42758F90ACAA82A8B6B8FE11B4A3B2A2B290E97B4DDD4B7DCE98DEB885C" },
   { name = "glam", version = "2.0.3", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "glam", source = "hex", outer_checksum = "237C2CE218A2A0A5D46D625F8EF5B78F964BC91018B78D692B17E1AB84295229" },
   { name = "glance", version = "6.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "glexer"], otp_app = "glance", source = "hex", outer_checksum = "49E0ED4793BB3F56C3E5ED00528D70CAE21D263F70A735604124B95C5F62E2DB" },
   { name = "glaze_oat", version = "3.0.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib", "lustre"], otp_app = "glaze_oat", source = "hex", outer_checksum = "B1373CA720EBB9D7FBDA4D2E28CAAD2B1928F6845313570AE72CA1D93B069706" },
@@ -36,6 +37,7 @@ packages = [
 ]
 
 [requirements]
+formal = { version = ">= 3.0.1 and < 4.0.0" }
 glaze_oat = { version = ">= 3.0.0 and < 4.0.0" }
 gleam_http = { version = ">= 4.3.0 and < 5.0.0" }
 gleam_json = { version = ">= 3.1.0 and < 4.0.0" }
