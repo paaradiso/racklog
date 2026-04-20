@@ -2,6 +2,7 @@ import argus
 import auth/sql
 import gleam/dynamic/decode
 import gleam/http/response
+import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -40,6 +41,36 @@ pub type UpdateUserPayload {
     user_role: Option(AppUserRole),
     preferred_unit: Option(PreferredUnit),
   )
+}
+
+fn update_user_payload_decoder() -> decode.Decoder(UpdateUserPayload) {
+  use username <- decode.optional_field("username", "", decode.string)
+  use email <- decode.optional_field("email", "", decode.string)
+  use password <- decode.optional_field("password", "", decode.string)
+  use current_password <- decode.optional_field(
+    "current_password",
+    None,
+    decode.optional(decode.string),
+  )
+  use user_role <- decode.optional_field(
+    "user_role",
+    None,
+    decode.optional(user.role_decoder()),
+  )
+  use preferred_unit <- decode.optional_field(
+    "preferred_unit",
+    None,
+    decode.optional(user.preferred_unit_decoder()),
+  )
+
+  decode.success(UpdateUserPayload(
+    username:,
+    email:,
+    password:,
+    current_password:,
+    user_role:,
+    preferred_unit:,
+  ))
 }
 
 fn user_credentials_decoder() -> decode.Decoder(#(String, String)) {
@@ -273,35 +304,21 @@ pub fn delete_user_by_id(_req: Request, ctx: Context, id: String) -> Response {
 pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
   use id <- middleware.require_valid_id(id)
   use _ <- middleware.require_authorisation(ctx, id)
-  use form <- wisp.require_form(req)
+  use json <- wisp.require_json(req)
 
   let update_user_result = {
-    let username =
-      list.key_find(form.values, "username")
-      |> result.unwrap("")
-    let password = list.key_find(form.values, "password") |> result.unwrap("")
-    let email = list.key_find(form.values, "email") |> result.unwrap("")
-    let current_password =
-      list.key_find(form.values, "current_password")
-      |> result.map(Some)
-      |> result.unwrap(None)
-    use user_role <- result.try(case list.key_find(form.values, "user_role") {
-      Ok("Admin") -> Ok(Some(user.AdminRole))
-      Ok("User") -> Ok(Some(user.UserRole))
-      Ok(_) -> Error(wisp.unprocessable_content())
-      Error(_) -> Ok(None)
-    })
-    use preferred_unit <- result.try(
-      case list.key_find(form.values, "preferred_unit") {
-        Ok("Kg") -> Ok(Some(user.Kg))
-        Ok("Lb") -> Ok(Some(user.Lb))
-        Ok(_) -> Error(wisp.unprocessable_content())
-        Error(_) -> Ok(None)
-      },
+    use payload <- result.try(
+      decode.run(json, update_user_payload_decoder())
+      |> result.replace_error(wisp.unprocessable_content()),
     )
 
     use _ <- result.try(
-      case is_admin(ctx, ctx.user_id), password, email, current_password {
+      case
+        is_admin(ctx, ctx.user_id),
+        payload.password,
+        payload.email,
+        payload.current_password
+      {
         True, _, _, _ -> Ok(Nil)
         False, "", "", _ -> Ok(Nil)
         False, _, _, None ->
@@ -313,7 +330,7 @@ pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
       },
     )
 
-    use _ <- result.try(case password {
+    use _ <- result.try(case payload.password {
       "" -> Ok(Nil)
       password ->
         user.validate_password(password)
@@ -323,26 +340,26 @@ pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
         })
     })
 
-    let hashed_password = case password {
+    let hashed_password = case payload.password {
       "" -> ""
       password -> hash_password(password)
     }
 
-    let role_string = case user_role {
+    let role_string = case payload.user_role {
       Some(role) -> user.role_to_string(role)
       None -> ""
     }
 
-    let preferred_unit_string = case preferred_unit {
+    let preferred_unit_string = case payload.preferred_unit {
       Some(preferred_unit) -> user.preferred_unit_to_string(preferred_unit)
       None -> ""
     }
 
-    use _ <- result.try(
+    use returned <- result.try(
       sql.update_user_by_id(
         ctx.db,
-        username,
-        email,
+        payload.username,
+        payload.email,
         hashed_password,
         role_string,
         preferred_unit_string,
@@ -351,7 +368,25 @@ pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
       |> result.replace_error(wisp.internal_server_error()),
     )
 
-    Ok(wisp.redirect("/settings"))
+    use user <- result.try(
+      list.first(returned.rows)
+      |> result.replace_error(wisp.not_found()),
+    )
+
+    Ok(
+      row_to_dto(
+        user.id,
+        user.username,
+        user.email,
+        user.user_role,
+        user.preferred_unit,
+        user.created_at,
+        user.updated_at,
+      )
+      |> user.to_json
+      |> json.to_string
+      |> wisp.json_response(200),
+    )
   }
 
   case update_user_result {
