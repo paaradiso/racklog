@@ -16,13 +16,12 @@ import racklog/user.{
 }
 import rsvp
 
-pub type SecurityForm {
-  SecurityForm(
+pub type SecurityData {
+  SecurityData(
     email: String,
     current_password: String,
     new_password: String,
     confirm_password: String,
-    error: String,
   )
 }
 
@@ -33,27 +32,36 @@ pub type Preferences {
 pub type Model {
   Model(
     user: UserDto,
-    security_form: SecurityForm,
+    security_form: Form(SecurityData),
+    security_error: String,
     preferences_form: Form(Preferences),
   )
 }
 
 pub type Msg {
-  UpdatedSecurityForm(SecurityForm)
-  SubmittedSecurityForm
+  SubmittedSecurityForm(Result(SecurityData, Form(SecurityData)))
   SavedSecurityForm(Result(UserDto, rsvp.Error))
   SubmittedPreferencesForm(Result(Preferences, Form(Preferences)))
   SavedPreferencesForm(Result(UserDto, rsvp.Error))
 }
 
-fn init_security_form(user: UserDto) -> SecurityForm {
-  SecurityForm(
-    email: user.email,
-    current_password: "",
-    new_password: "",
-    confirm_password: "",
-    error: "",
-  )
+fn init_security_form(user: UserDto) -> Form(SecurityData) {
+  form.new({
+    use email <- form.field("email", form.parse_string)
+    use current_password <- form.field("current_password", form.parse_string)
+    use new_password <- form.field("new_password", form.parse_string)
+    use confirm_password <- form.field(
+      "confirm_password",
+      form.parse_string |> form.check_confirms(new_password),
+    )
+    form.success(SecurityData(
+      email:,
+      current_password:,
+      new_password:,
+      confirm_password:,
+    ))
+  })
+  |> form.add_string("email", user.email)
 }
 
 fn init_preferences_form(user: UserDto) -> Form(Preferences) {
@@ -64,7 +72,7 @@ fn init_preferences_form(user: UserDto) -> Form(Preferences) {
         case values {
           ["kg", ..] -> Ok(Kg)
           ["lb", ..] -> Ok(Lb)
-          _ -> Error(#(Kg, "Invalid unit selected. Please select kg or lb."))
+          _ -> Error(#(Kg, "Invalid unit selected."))
         }
       }),
     )
@@ -72,7 +80,7 @@ fn init_preferences_form(user: UserDto) -> Form(Preferences) {
   })
   |> form.add_string(
     "preferred_unit",
-    user.preferred_unit_to_string(user.preferred_unit),
+    string.lowercase(user.preferred_unit_to_string(user.preferred_unit)),
   )
 }
 
@@ -81,6 +89,7 @@ pub fn init(user: UserDto) -> #(Model, Effect(Msg)) {
     Model(
       user:,
       security_form: init_security_form(user),
+      security_error: "",
       preferences_form: init_preferences_form(user),
     ),
     effect.none(),
@@ -89,73 +98,53 @@ pub fn init(user: UserDto) -> #(Model, Effect(Msg)) {
 
 pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    UpdatedSecurityForm(security_form) -> #(
-      Model(..model, security_form:),
+    SubmittedSecurityForm(Error(security_form)) -> #(
+      Model(..model, security_form:, security_error: ""),
       effect.none(),
     )
-    SubmittedSecurityForm -> {
-      case validate_security_form(model.security_form, model.user) {
-        Error(msg) -> #(
-          Model(
-            ..model,
-            security_form: SecurityForm(..model.security_form, error: msg),
-          ),
-          effect.none(),
-        )
+    SubmittedSecurityForm(Ok(data)) -> {
+      case validate_security_data(data, model.user) {
+        Error(msg) -> #(Model(..model, security_error: msg), effect.none())
         Ok(Nil) -> {
-          let form = model.security_form
           let fx =
             rsvp.patch(
               "/api/users/" <> int.to_string(model.user.id),
               json.object([
-                #("email", json.string(form.email)),
-                #("current_password", json.string(form.current_password)),
-                #("password", json.string(form.new_password)),
+                #("email", json.string(data.email)),
+                #("current_password", json.string(data.current_password)),
+                #("password", json.string(data.new_password)),
               ]),
               rsvp.expect_json(user.decoder(), SavedSecurityForm),
             )
-          #(model, fx)
+          #(Model(..model, security_error: ""), fx)
         }
       }
     }
-    SavedSecurityForm(Ok(user)) -> {
-      #(
-        Model(..model, user:, security_form: init_security_form(user)),
-        effect.batch([
-          fx.toast(
-            title: "Success",
-            description: "Saved security settings.",
-            variant: toast.Success,
-          ),
-        ]),
-      )
-    }
+    SavedSecurityForm(Ok(user)) -> #(
+      Model(
+        ..model,
+        user:,
+        security_form: init_security_form(user),
+        security_error: "",
+      ),
+      fx.toast(
+        title: "Success",
+        description: "Saved security settings.",
+        variant: toast.Success,
+      ),
+    )
     SavedSecurityForm(Error(rsvp.HttpError(response)))
-      if response.status == 400
-    -> {
-      let security_form =
-        SecurityForm(..model.security_form, error: response.body)
-      #(Model(..model, security_form:), effect.none())
-    }
-    SavedSecurityForm(Error(rsvp.HttpError(response)))
-      if response.status == 401
-    -> {
-      let security_form =
-        SecurityForm(..model.security_form, error: response.body)
-      #(Model(..model, security_form:), effect.none())
-    }
-    SavedSecurityForm(Error(_)) -> {
-      let security_form =
-        SecurityForm(..model.security_form, error: "Failed to save settings.")
-      #(
-        Model(..model, security_form:),
-        fx.toast(
-          title: "Error",
-          description: "Failed to save settings.",
-          variant: toast.Danger,
-        ),
-      )
-    }
+      if response.status == 400 || response.status == 401
+    -> #(Model(..model, security_error: response.body), effect.none())
+    SavedSecurityForm(Error(_)) -> #(
+      Model(..model, security_error: "Failed to save settings."),
+      fx.toast(
+        title: "Error",
+        description: "Failed to save settings.",
+        variant: toast.Danger,
+      ),
+    )
+
     SubmittedPreferencesForm(Ok(preferences)) -> {
       let fx =
         rsvp.patch(
@@ -172,25 +161,29 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
         )
       #(model, fx)
     }
-    SubmittedPreferencesForm(Error(preferences_form)) -> {
-      #(Model(..model, preferences_form:), effect.none())
-    }
-    SavedPreferencesForm(Ok(user)) -> {
-      #(
-        Model(..model, user:, preferences_form: init_preferences_form(user)),
-        effect.batch([
-          fx.toast(
-            title: "Success",
-            description: "Saved preferences.",
-            variant: toast.Success,
-          ),
-        ]),
-      )
-    }
-    SavedPreferencesForm(Error(_e)) -> {
-      // fix 
-      #(model, effect.none())
-    }
+
+    SubmittedPreferencesForm(Error(preferences_form)) -> #(
+      Model(..model, preferences_form:),
+      effect.none(),
+    )
+
+    SavedPreferencesForm(Ok(user)) -> #(
+      Model(..model, user:, preferences_form: init_preferences_form(user)),
+      fx.toast(
+        title: "Success",
+        description: "Saved preferences.",
+        variant: toast.Success,
+      ),
+    )
+
+    SavedPreferencesForm(Error(_)) -> #(
+      model,
+      fx.toast(
+        title: "Error",
+        description: "Failed to save preferences.",
+        variant: toast.Danger,
+      ),
+    )
   }
 }
 
@@ -206,59 +199,43 @@ pub fn view(model: Model) -> List(Element(Msg)) {
           html.form(
             [
               attribute.id("security_form"),
-              event.on_submit(fn(_) { SubmittedSecurityForm })
+              event.on_submit(fn(values) {
+                model.security_form
+                |> form.add_values(values)
+                |> form.run
+                |> SubmittedSecurityForm
+              })
                 |> event.prevent_default,
             ],
             [
               html.div([attribute.class("flex flex-col gap-2")], [
-                case model.security_form.error {
+                case model.security_error {
                   "" -> element.none()
                   msg -> components.error_message_box(msg)
                 },
-                components.form_input(
-                  label: "Email Address",
-                  id: "email",
+                components.formal_input(
+                  form: model.security_form,
+                  is: "email",
                   name: "email",
-                  attributes: [
-                    attribute.type_("email"),
-                    attribute.value(model.security_form.email),
-                    event.on_input(fn(v) {
-                      UpdatedSecurityForm(
-                        SecurityForm(..model.security_form, email: v),
-                      )
-                    }),
-                  ],
+                  label: "Email Address",
+                  attributes: [],
                 ),
 
                 html.hr([attribute.class("mt-2 mb-0 w-full color-border")]),
 
-                components.form_input(
-                  label: "New Password",
-                  id: "new_password",
+                components.formal_input(
+                  form: model.security_form,
+                  is: "password",
                   name: "new_password",
-                  attributes: [
-                    attribute.type_("password"),
-                    attribute.value(model.security_form.new_password),
-                    event.on_input(fn(v) {
-                      UpdatedSecurityForm(
-                        SecurityForm(..model.security_form, new_password: v),
-                      )
-                    }),
-                  ],
+                  label: "New Password",
+                  attributes: [],
                 ),
-                components.form_input(
-                  label: "Confirm Password",
-                  id: "confirm_password",
+                components.formal_input(
+                  form: model.security_form,
+                  is: "password",
                   name: "confirm_password",
-                  attributes: [
-                    attribute.type_("password"),
-                    attribute.value(model.security_form.confirm_password),
-                    event.on_input(fn(v) {
-                      UpdatedSecurityForm(
-                        SecurityForm(..model.security_form, confirm_password: v),
-                      )
-                    }),
-                  ],
+                  label: "Confirm Password",
+                  attributes: [],
                 ),
 
                 html.hr([attribute.class("mt-2 mb-0 w-full color-border")]),
@@ -266,22 +243,12 @@ pub fn view(model: Model) -> List(Element(Msg)) {
                 case model.user.role {
                   AdminRole -> element.none()
                   UserRole ->
-                    components.form_input(
-                      label: "Current Password",
-                      id: "current_password",
+                    components.formal_input(
+                      form: model.security_form,
+                      is: "password",
                       name: "current_password",
-                      attributes: [
-                        attribute.type_("password"),
-                        attribute.value(model.security_form.current_password),
-                        event.on_input(fn(v) {
-                          UpdatedSecurityForm(
-                            SecurityForm(
-                              ..model.security_form,
-                              current_password: v,
-                            ),
-                          )
-                        }),
-                      ],
+                      label: "Current Password",
+                      attributes: [],
                     )
                 },
                 components.button(
@@ -291,10 +258,6 @@ pub fn view(model: Model) -> List(Element(Msg)) {
                     attribute.type_("submit"),
                     attribute.attribute("form", "security_form"),
                     attribute.class("px-6 w-min"),
-                    attribute.disabled(
-                      SecurityForm(..model.security_form, error: "")
-                      == init_security_form(model.user),
-                    ),
                   ],
                   children: [element.text("Save")],
                 ),
@@ -323,7 +286,7 @@ pub fn view(model: Model) -> List(Element(Msg)) {
                 html.div([], [
                   html.label(
                     [
-                      attribute.for("edit_user_select"),
+                      attribute.for("preferred_unit"),
                       attribute.class(
                         "block mb-1 text-sm font-medium text-secondary-foreground",
                       ),
@@ -333,37 +296,20 @@ pub fn view(model: Model) -> List(Element(Msg)) {
                   html.select(
                     [
                       attribute.name("preferred_unit"),
+                      attribute.property(
+                        "value",
+                        json.string(form.field_value(
+                          model.preferences_form,
+                          "preferred_unit",
+                        )),
+                      ),
                       attribute.class(
                         "py-2 px-3 w-full rounded-md border focus:border-transparent focus:ring-2 focus:outline-none border-input-border placeholder:text-muted-foreground focus:ring-ring",
                       ),
                     ],
                     [
-                      html.option(
-                        [
-                          attribute.value("kg"),
-                          attribute.selected(
-                            form.field_value(
-                              model.preferences_form,
-                              "preferred_unit",
-                            )
-                            == "kg",
-                          ),
-                        ],
-                        "Kg",
-                      ),
-                      html.option(
-                        [
-                          attribute.value("lb"),
-                          attribute.selected(
-                            form.field_value(
-                              model.preferences_form,
-                              "preferred_unit",
-                            )
-                            == "lb",
-                          ),
-                        ],
-                        "Lb",
-                      ),
+                      html.option([attribute.value("kg")], "Kg"),
+                      html.option([attribute.value("lb")], "Lb"),
                     ],
                   ),
                   ..list.map(
@@ -371,14 +317,13 @@ pub fn view(model: Model) -> List(Element(Msg)) {
                       model.preferences_form,
                       "preferred_unit",
                     ),
-                    fn(error_message) {
+                    fn(msg) {
                       html.p([attribute.class("text-sm text-destructive")], [
-                        html.text(error_message),
+                        html.text(msg),
                       ])
                     },
                   )
                 ]),
-
                 components.button(
                   variant: ButtonPrimary,
                   href: "",
@@ -398,27 +343,25 @@ pub fn view(model: Model) -> List(Element(Msg)) {
   ]
 }
 
-fn validate_security_form(
-  form: SecurityForm,
+fn validate_security_data(
+  data: SecurityData,
   user: UserDto,
 ) -> Result(Nil, String) {
   case
     user.role,
-    form.email != user.email,
-    form.new_password != "" || form.confirm_password != "",
-    form.current_password
+    data.email != user.email,
+    data.new_password != "" || data.confirm_password != "",
+    data.current_password
   {
     _, False, False, _ -> Ok(Nil)
     UserRole, True, _, "" ->
       Error("Current password is required to change email.")
     UserRole, _, True, "" ->
       Error("Current password is required to change password.")
-    _, _, True, _ if form.new_password == "" ->
+    _, _, True, _ if data.new_password == "" ->
       Error("New password is required.")
-    _, _, True, _ if form.confirm_password == "" ->
+    _, _, True, _ if data.confirm_password == "" ->
       Error("Please confirm your new password.")
-    _, _, True, _ if form.new_password != form.confirm_password ->
-      Error("Passwords do not match.")
     _, _, _, _ -> Ok(Nil)
   }
 }

@@ -108,13 +108,14 @@ pub fn formal_input(
     html.input([
       attribute.id(name),
       attribute.name(name),
+      attribute.type_(type_),
       attribute.class(
         "py-2 px-3 w-full rounded-md border focus:border-transparent focus:ring-2 focus:outline-none border-input-border placeholder:text-muted-foreground focus:ring-ring",
       ),
       ..attributes
     ]),
     ..list.map(errors, fn(error_message) {
-      html.p([attribute.class("mt-0.5 text-xs text-destructive")], [
+      html.p([attribute.class("text-sm text-destructive")], [
         html.text(error_message),
       ])
     })
