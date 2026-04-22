@@ -1,7 +1,9 @@
 import components.{ButtonPrimary}
-import gleam/http/response
+import formal/form.{type Form}
+import gleam/http/response.{type Response}
 import gleam/json
 import gleam/option.{None}
+import gleam/string
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
@@ -10,49 +12,90 @@ import lustre/event
 import modem
 import rsvp
 
+const root_error_field = "root"
+
+pub type LoginData {
+  LoginData(username: String, password: String)
+}
+
 pub type Model {
-  Model(username: String, password: String, error: String)
+  Model(form: Form(LoginData), is_loading: Bool)
 }
 
 pub type Msg {
-  UpdatedUsername(String)
-  UpdatedPassword(String)
-  SubmittedForm
-  GotResponse(Result(response.Response(String), rsvp.Error))
+  SubmittedForm(Result(LoginData, Form(LoginData)))
+  GotLoginResponse(Result(Response(String), rsvp.Error))
+}
+
+fn init_form() -> Form(LoginData) {
+  form.new({
+    use username <- form.field("username", form.parse_string)
+    use password <- form.field("password", form.parse_string)
+    form.success(LoginData(username:, password:))
+  })
 }
 
 pub fn init() -> #(Model, Effect(Msg)) {
-  #(Model(username: "", password: "", error: ""), effect.none())
+  #(Model(form: init_form(), is_loading: False), effect.none())
 }
 
 pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    UpdatedUsername(username) -> #(Model(..model, username:), effect.none())
-    UpdatedPassword(password) -> #(Model(..model, password:), effect.none())
-    SubmittedForm -> {
+    SubmittedForm(Error(form)) -> #(
+      Model(form:, is_loading: False),
+      effect.none(),
+    )
+    SubmittedForm(Ok(data)) -> {
       let fx =
         rsvp.post(
           "/api/login",
           json.object([
-            #("username", json.string(model.username)),
-            #("password", json.string(model.password)),
+            #("username", json.string(data.username)),
+            #("password", json.string(data.password)),
           ]),
-          rsvp.expect_any_response(GotResponse),
+          rsvp.expect_ok_response(GotLoginResponse),
         )
-      #(model, fx)
+      #(Model(form: init_form(), is_loading: True), fx)
     }
-    GotResponse(Ok(resp)) -> {
-      case resp.status {
-        200 -> #(model, modem.push("/admin", None, None))
+    GotLoginResponse(Ok(response)) -> {
+      case response.status {
+        200 -> #(model, modem.push("/", None, None))
         401 -> #(
-          Model(..model, error: "Invalid username or password."),
+          Model(
+            is_loading: False,
+            form: model.form
+              |> form.add_error(
+                root_error_field,
+                form.CustomError("Invalid username or password."),
+              ),
+          ),
           effect.none(),
         )
-        _ -> #(Model(..model, error: "Something went wrong."), effect.none())
+        _ -> #(
+          Model(
+            form: model.form
+              |> form.add_error(
+                root_error_field,
+                form.CustomError("Something went wrong."),
+              ),
+            is_loading: False,
+          ),
+          effect.none(),
+        )
       }
     }
-    GotResponse(Error(_)) -> {
-      #(Model(..model, error: "Something went wrong."), effect.none())
+    GotLoginResponse(Error(_)) -> {
+      #(
+        Model(
+          form: model.form
+            |> form.add_error(
+              root_error_field,
+              form.CustomError("Something went wrong."),
+            ),
+          is_loading: False,
+        ),
+        effect.none(),
+      )
     }
   }
 }
@@ -67,47 +110,47 @@ pub fn view(model: Model) -> List(Element(Msg)) {
           ),
         ],
         [
-          html.h1([attribute.class("text-2xl font-semibold text-center")], [
+          html.h1([attribute.class("mb-0 text-2xl font-medium text-center")], [
             element.text("Welcome back"),
           ]),
-          case model.error {
-            "" -> element.none()
-            msg -> components.error_message_box(msg)
-          },
           html.form(
             [
               attribute.class("contents"),
-              event.on_submit(fn(_) { SubmittedForm })
+              event.on_submit(fn(values) {
+                model.form
+                |> form.add_values(values)
+                |> form.run
+                |> SubmittedForm
+              })
                 |> event.prevent_default,
             ],
             [
-              components.form_input(
-                label: "Username",
-                id: "username",
+              case form.field_error_messages(model.form, root_error_field) {
+                [] -> element.none()
+                messages ->
+                  components.error_message_box(
+                    messages |> string.join(with: ", "),
+                  )
+              },
+              components.formal_input(
+                form: model.form,
+                is: "text",
                 name: "username",
-                attributes: [
-                  attribute.value(model.username),
-                  event.on_input(UpdatedUsername),
-                ],
+                label: "Username",
+                attributes: [],
               ),
-              components.form_input(
-                label: "Password",
-                id: "password",
+              components.formal_input(
+                form: model.form,
+                is: "password",
                 name: "password",
-                attributes: [
-                  attribute.type_("password"),
-                  attribute.value(model.password),
-                  event.on_input(UpdatedPassword),
-                ],
+                label: "Password",
+                attributes: [],
               ),
               components.button(
                 variant: ButtonPrimary,
                 href: "",
-                attributes: [
-                  attribute.type_("submit"),
-                  attribute.class("btn-primary"),
-                ],
-                children: [element.text("Login")],
+                attributes: [attribute.disabled(model.is_loading)],
+                children: [element.text("Log in")],
               ),
             ],
           ),
