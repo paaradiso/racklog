@@ -28,6 +28,7 @@ youid = ">= 1.6.0 and < 2.0.0"
 dot_env = ">= 1.2.0 and < 2.0.0"
 
 shared = { path = "../shared" }
+envie = ">= 1.1.0 and < 2.0.0"
 
 [dev_dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"

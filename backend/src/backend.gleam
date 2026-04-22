@@ -9,7 +9,7 @@ import wisp
 import wisp/wisp_mist
 
 pub fn main() {
-  let assert Ok(cfg) = config.load()
+  let cfg = config.load()
   wisp.configure_logger()
 
   let db = db.connect()

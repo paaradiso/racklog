@@ -3,7 +3,7 @@ import gleam/erlang/process
 import pog
 
 pub fn connect() -> pog.Connection {
-  let assert Ok(cfg) = config.load()
+  let cfg = config.load()
 
   let pool_name = process.new_name("db")
 
