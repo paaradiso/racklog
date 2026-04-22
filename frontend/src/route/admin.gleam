@@ -1,7 +1,8 @@
 import components.{ButtonDanger, ButtonOutline, ButtonPrimary, ButtonSecondary}
+import formal/form.{type Form}
 import fx
-import glaze/oat/dialog
 import glaze/oat/toast
+import gleam/http/response.{Response}
 import gleam/int
 import gleam/json
 import gleam/list
@@ -17,7 +18,8 @@ import lustre/element/html
 import lustre/event
 import modem
 import racklog/user.{type AppUserRole, type UserDto, AdminRole, UserRole}
-import rsvp
+import rsvp.{HttpError}
+import utils
 
 pub type Tab {
   GeneralTab
@@ -38,57 +40,148 @@ pub type Dialog {
   ConfirmDialog(message: String, on_confirm: Msg)
 }
 
-pub type AddUserForm {
-  AddUserForm(
+pub type AddUserData {
+  AddUserData(
     username: String,
     email: String,
     password: String,
+    confirm_password: String,
     role: AppUserRole,
-    error: String,
   )
 }
 
-pub type EditUserForm {
-  EditUserForm(
-    id: Int,
+pub type EditUserData {
+  EditUserData(
     username: String,
     email: String,
     password: String,
+    confirm_password: String,
     role: AppUserRole,
-    error: String,
   )
 }
 
-fn default_add_user_form() -> AddUserForm {
-  AddUserForm(username: "", email: "", password: "", role: UserRole, error: "")
-}
+fn init_add_user_form() -> Form(AddUserData) {
+  form.new({
+    use username <- form.field(
+      user.UsernameField |> user.form_field_to_string,
+      form.parse_string,
+    )
+    use email <- form.field(
+      user.EmailField |> user.form_field_to_string,
+      form.parse_string,
+    )
+    use password <- form.field(
+      user.PasswordField |> user.form_field_to_string,
+      form.parse_string
+        |> form.check_string_length_more_than(user.minimum_password_length - 1),
+    )
+    use confirm_password <- form.field(
+      user.ConfirmPasswordField |> user.form_field_to_string,
+      form.parse_string |> form.check_confirms(password),
+    )
+    use role <- form.field(
+      user.RoleField |> user.form_field_to_string,
+      form.parse(fn(values) {
+        let user_role_string = user.role_to_string(UserRole)
+        let admin_role_string = user.role_to_string(AdminRole)
+        case values {
+          [str, ..] if str == user_role_string -> Ok(UserRole)
+          [str, ..] if str == admin_role_string -> Ok(AdminRole)
+          _ -> Error(#(UserRole, "Invalid role selected."))
+        }
+      }),
+    )
 
-fn default_edit_user_form() -> EditUserForm {
-  EditUserForm(
-    id: 0,
-    username: "",
-    email: "",
-    password: "",
-    role: UserRole,
-    error: "",
+    form.success(AddUserData(
+      username:,
+      email:,
+      password:,
+      confirm_password:,
+      role:,
+    ))
+  })
+  |> form.add_string(
+    user.RoleField |> user.form_field_to_string,
+    user.role_to_string(UserRole),
   )
 }
 
-fn dialog_to_id(dialog: Dialog) -> String {
-  case dialog {
-    AddUserDialog -> "add_user"
-    EditUserDialog -> "edit_user"
-    ConfirmDialog(_, _) -> "confirm"
-  }
+fn init_edit_user_form(user: Option(UserDto)) -> Form(EditUserData) {
+  form.new({
+    use username <- form.field(
+      user.UsernameField |> user.form_field_to_string,
+      form.parse_string,
+    )
+    use email <- form.field(
+      user.EmailField |> user.form_field_to_string,
+      form.parse_string,
+    )
+    // TODO: fix parsing, if you input something, submit with an error, then clear, it still thinks there's a value
+    use password <- form.field(
+      user.PasswordField |> user.form_field_to_string,
+      form.parse_optional(
+        form.parse_string
+        |> form.check_string_length_more_than(user.minimum_password_length - 1),
+      )
+        |> form.map(option.unwrap(_, "")),
+    )
+    use confirm_password <- form.field(
+      user.ConfirmPasswordField |> user.form_field_to_string,
+      form.parse_optional(
+        form.parse_string
+        |> form.check_confirms(password),
+      )
+        |> form.map(option.unwrap(_, "")),
+    )
+    use role <- form.field(
+      user.RoleField |> user.form_field_to_string,
+      form.parse(fn(values) {
+        let user_role_string = user.role_to_string(UserRole)
+        let admin_role_string = user.role_to_string(AdminRole)
+        case values {
+          [str, ..] if str == user_role_string -> Ok(UserRole)
+          [str, ..] if str == admin_role_string -> Ok(AdminRole)
+          _ -> Error(#(UserRole, "Invalid role selected."))
+        }
+      }),
+    )
+
+    form.success(EditUserData(
+      username:,
+      email:,
+      password:,
+      confirm_password:,
+      role:,
+    ))
+  })
+  |> form.add_string(
+    user.RoleField |> user.form_field_to_string,
+    user.role_to_string(case user {
+      Some(u) -> u.role
+      None -> user.UserRole
+    }),
+  )
+  |> form.add_string(
+    user.UsernameField |> user.form_field_to_string,
+    case user {
+      Some(u) -> u.username
+      None -> ""
+    },
+  )
+  |> form.add_string(user.EmailField |> user.form_field_to_string, case user {
+    Some(u) -> u.email
+    None -> ""
+  })
 }
 
 pub type Model {
   Model(
     active_tab: Tab,
     users: List(UserDto),
-    add_user_form: AddUserForm,
-    edit_user_form: EditUserForm,
-    confirm_dialog: Option(Dialog),
+    add_user_form: Form(AddUserData),
+    edit_user_form: Form(EditUserData),
+    editing_user: Option(UserDto),
+    active_dialog: Option(Dialog),
   )
 }
 
@@ -98,16 +191,14 @@ pub type Msg {
   OpenedAddUserDialog
   OpenedEditUserDialog(UserDto)
   OpenedConfirmDialog(message: String, on_confirm: Msg)
-  ClosedConfirmDialog
+  ClosedDialog
   ConfirmedDialog
   DeleteUserRequestSent(Int)
   DeletedUser(Result(Int, rsvp.Error))
-  UpdatedAddUserForm(AddUserForm)
-  SubmittedAddUser
-  AddedUser(Result(UserDto, rsvp.Error))
-  UpdatedEditUserForm(EditUserForm)
-  SubmittedEditUser
-  EditedUser(Result(UserDto, rsvp.Error))
+  SubmittedAddUserForm(Result(AddUserData, Form(AddUserData)))
+  SavedAddUserForm(Result(UserDto, rsvp.Error))
+  SubmittedEditUserForm(Result(EditUserData, Form(EditUserData)))
+  SavedEditUserForm(Result(UserDto, rsvp.Error))
 }
 
 pub fn init() -> #(Model, Effect(Msg)) {
@@ -119,9 +210,10 @@ pub fn init_with_tab(tab: Tab) -> #(Model, Effect(Msg)) {
     Model(
       active_tab: tab,
       users: [],
-      add_user_form: default_add_user_form(),
-      edit_user_form: default_edit_user_form(),
-      confirm_dialog: None,
+      add_user_form: init_add_user_form(),
+      edit_user_form: init_edit_user_form(None),
+      editing_user: None,
+      active_dialog: None,
     )
 
   let fx = case tab {
@@ -167,38 +259,34 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
       ),
     )
     OpenedAddUserDialog -> #(
-      Model(..model, add_user_form: default_add_user_form()),
+      Model(
+        ..model,
+        add_user_form: init_add_user_form(),
+        active_dialog: Some(AddUserDialog),
+      ),
       effect.none(),
     )
     OpenedEditUserDialog(user) -> #(
       Model(
         ..model,
-        edit_user_form: EditUserForm(
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          password: "",
-          role: user.role,
-          error: "",
-        ),
+        edit_user_form: init_edit_user_form(Some(user)),
+        editing_user: Some(user),
+        active_dialog: Some(EditUserDialog),
       ),
       effect.none(),
     )
     OpenedConfirmDialog(message: message, on_confirm: on_confirm_msg) -> #(
       Model(
         ..model,
-        confirm_dialog: Some(ConfirmDialog(message, on_confirm_msg)),
+        active_dialog: Some(ConfirmDialog(message, on_confirm_msg)),
       ),
       effect.none(),
     )
-    ClosedConfirmDialog -> #(
-      Model(..model, confirm_dialog: None),
-      close_dialog("confirm"),
-    )
+    ClosedDialog -> #(Model(..model, active_dialog: None), effect.none())
     ConfirmedDialog -> {
-      case model.confirm_dialog {
+      case model.active_dialog {
         Some(ConfirmDialog(_, on_confirm_msg)) ->
-          update(Model(..model, confirm_dialog: None), on_confirm_msg)
+          update(Model(..model, active_dialog: None), on_confirm_msg)
         _ -> #(model, effect.none())
       }
     }
@@ -215,9 +303,8 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
           }),
         )
 
-      #(model, effect.batch([fx, close_dialog("confirm")]))
+      #(model, fx)
     }
-
     DeletedUser(Ok(user_id)) -> {
       let updated_users = list.filter(model.users, fn(u) { u.id != user_id })
       #(
@@ -229,7 +316,6 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
         ),
       )
     }
-
     DeletedUser(Error(_)) -> {
       #(
         model,
@@ -240,48 +326,65 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
         ),
       )
     }
-    UpdatedAddUserForm(form) -> {
-      #(Model(..model, add_user_form: form), effect.none())
-    }
-    SubmittedAddUser -> {
+    SubmittedAddUserForm(Error(add_user_form)) -> #(
+      Model(..model, add_user_form:),
+      effect.none(),
+    )
+    SubmittedAddUserForm(Ok(data)) -> {
+      let add_user_form =
+        init_add_user_form()
+        |> form.add_string(
+          user.RoleField |> user.form_field_to_string,
+          data.role |> user.role_to_string,
+        )
       let fx =
         rsvp.post(
           "/api/users",
           json.object([
-            #("username", json.string(model.add_user_form.username)),
-            #("email", json.string(model.add_user_form.email)),
-            #("password", json.string(model.add_user_form.password)),
-            #(
-              "user_role",
-              json.string(user.role_to_string(model.add_user_form.role)),
-            ),
+            #("username", json.string(data.username)),
+            #("email", json.string(data.email)),
+            #("password", json.string(data.password)),
+            #("user_role", json.string(user.role_to_string(data.role))),
           ]),
-          rsvp.expect_json(user.decoder(), AddedUser),
+          rsvp.expect_json(user.decoder(), SavedAddUserForm),
         )
 
-      #(model, fx)
+      #(Model(..model, add_user_form:), fx)
     }
-    AddedUser(Ok(user)) -> #(
+    SavedAddUserForm(Ok(user)) -> #(
       Model(
         ..model,
         users: [user, ..model.users],
-        add_user_form: default_add_user_form(),
+        add_user_form: init_add_user_form(),
+        active_dialog: None,
       ),
-      effect.batch([
-        close_dialog(dialog_to_id(AddUserDialog)),
-
-        fx.toast(
-          title: "Success",
-          description: "Added user" <> user.username <> ".",
-          variant: toast.Success,
-        ),
-      ]),
+      fx.toast(
+        title: "Success",
+        description: "Added user " <> user.username <> ".",
+        variant: toast.Success,
+      ),
     )
-    AddedUser(Error(_)) -> {
-      let form =
-        AddUserForm(..model.add_user_form, error: "Failed to add user.")
+    SavedAddUserForm(Error(HttpError(Response(status:, body:, ..))))
+      if status == 409 || status == 422
+    -> {
+      let add_user_form = case json.parse(body, user.field_error_decoder()) {
+        Ok(#(field, message)) ->
+          utils.add_form_custom_error(
+            model.add_user_form,
+            user.form_field_to_string(field),
+            message,
+          )
+        Error(_) -> model.add_user_form
+      }
       #(
-        Model(..model, add_user_form: form),
+        Model(..model, add_user_form:),
+        effect.none(),
+        // fx.toast(title: "Error", description: body, variant: toast.Danger),
+      )
+    }
+    SavedAddUserForm(Error(_)) -> {
+      #(
+        model,
         fx.toast(
           title: "Error",
           description: "Failed to add user.",
@@ -289,35 +392,36 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
         ),
       )
     }
-    UpdatedEditUserForm(form) -> {
-      #(Model(..model, edit_user_form: form), effect.none())
-    }
-    SubmittedEditUser -> {
-      let payload_fields = [
-        #("email", json.string(model.edit_user_form.email)),
-        #(
-          "user_role",
-          json.string(user.role_to_string(model.edit_user_form.role)),
-        ),
-      ]
-      let payload_fields = case model.edit_user_form.password {
-        "" -> payload_fields
-        pw -> [#("password", json.string(pw)), ..payload_fields]
+    SubmittedEditUserForm(Error(edit_user_form)) -> #(
+      Model(..model, edit_user_form:),
+      effect.none(),
+    )
+    SubmittedEditUserForm(Ok(data)) -> {
+      case model.editing_user {
+        Some(user) -> {
+          let edit_user_form =
+            init_edit_user_form(Some(user))
+            |> form.add_string(
+              user.RoleField |> user.form_field_to_string,
+              data.role |> user.role_to_string,
+            )
+          let fx =
+            rsvp.patch(
+              "/api/users/" <> int.to_string(user.id),
+              json.object([
+                #("username", json.string(data.username)),
+                #("email", json.string(data.email)),
+                #("password", json.string(data.password)),
+                #("user_role", json.string(user.role_to_string(data.role))),
+              ]),
+              rsvp.expect_json(user.decoder(), SavedEditUserForm),
+            )
+          #(Model(..model, edit_user_form:), fx)
+        }
+        None -> #(model, effect.none())
       }
-      let payload_fields = case model.edit_user_form.username {
-        "" -> payload_fields
-        username -> [#("username", json.string(username)), ..payload_fields]
-      }
-      let fx =
-        rsvp.patch(
-          "/api/users/" <> int.to_string(model.edit_user_form.id),
-          json.object(payload_fields),
-          rsvp.expect_json(user.decoder(), EditedUser),
-        )
-
-      #(model, fx)
     }
-    EditedUser(Ok(user)) -> {
+    SavedEditUserForm(Ok(user)) -> {
       let users =
         list.map(model.users, fn(u) {
           case u.id == user.id {
@@ -326,25 +430,49 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
           }
         })
       #(
-        Model(..model, users: users, edit_user_form: default_edit_user_form()),
-        effect.batch([
-          close_dialog(dialog_to_id(EditUserDialog)),
-          fx.toast(
-            title: "Success",
-            description: "Edited user " <> user.username <> ".",
-            variant: toast.Success,
-          ),
-        ]),
+        Model(
+          ..model,
+          users:,
+          edit_user_form: init_edit_user_form(None),
+          editing_user: None,
+          active_dialog: None,
+        ),
+        fx.toast(
+          title: "Success",
+          description: "Edited user " <> user.username <> ".",
+          variant: toast.Success,
+        ),
       )
     }
-    EditedUser(Error(_)) -> {
-      let form =
-        EditUserForm(..model.edit_user_form, error: "Failed to edit user.")
+    SavedEditUserForm(Error(HttpError(response)))
+      if response.status == 400 || response.status == 401
+    -> {
+      let edit_user_form =
+        utils.add_form_root_error(model.edit_user_form, response.body)
+      #(Model(..model, edit_user_form:, editing_user: None), effect.none())
+    }
+    SavedEditUserForm(Error(rsvp.HttpError(response)))
+      if response.status == 422 || response.status == 409
+    -> {
+      let edit_user_form = case
+        json.parse(response.body, user.field_error_decoder())
+      {
+        Ok(#(field, message)) ->
+          utils.add_form_custom_error(
+            model.edit_user_form,
+            field |> user.form_field_to_string,
+            message,
+          )
+        Error(_) -> model.edit_user_form
+      }
+      #(Model(..model, edit_user_form:, editing_user: None), effect.none())
+    }
+    SavedEditUserForm(Error(_)) -> {
       #(
-        Model(..model, edit_user_form: form),
+        model,
         fx.toast(
           title: "Error",
-          description: "Failed to edit user.",
+          description: "Failed to save settings.",
           variant: toast.Danger,
         ),
       )
@@ -420,7 +548,6 @@ fn view_users_tab(model: Model) -> Element(Msg) {
       attributes: [
         attribute.class("mb-2 w-min text-nowrap"),
         event.on_click(OpenedAddUserDialog),
-        ..dialog.open_for(dialog_to_id(AddUserDialog))
       ],
       children: [element.text("Add User")],
     ),
@@ -496,10 +623,9 @@ fn view_users_tab(model: Model) -> Element(Msg) {
                 attributes: [
                   attribute.class("flex justify-center items-center"),
                   event.on_click(OpenedEditUserDialog(user)),
-                  ..dialog.open_for(dialog_to_id(EditUserDialog))
                 ],
                 children: [
-                  lucide_lustre.pencil([attribute.class("size-4")]),
+                  lucide_lustre.pencil([attribute.class("size-4 shrink-0")]),
                   element.text("Edit"),
                 ],
               ),
@@ -514,10 +640,9 @@ fn view_users_tab(model: Model) -> Element(Msg) {
                     message: "This user will be permanently deleted.",
                     on_confirm: DeleteUserRequestSent(user.id),
                   )),
-                  ..dialog.open_for("confirm")
                 ],
                 children: [
-                  lucide_lustre.trash_2([attribute.class("size-4")]),
+                  lucide_lustre.trash_2([attribute.class("size-4 shrink-0")]),
                   element.text("Delete"),
                 ],
               ),
@@ -530,110 +655,108 @@ fn view_users_tab(model: Model) -> Element(Msg) {
 }
 
 fn view_add_user_dialog(model: Model) -> Element(Msg) {
-  dialog.dialog(
-    [
-      dialog.id(dialog_to_id(AddUserDialog)),
-      attribute.class("rounded-lg"),
-    ],
-    [
-      dialog.header([], [dialog.title([], [html.text("Add User")])]),
-      html.form(
-        [
-          attribute.id("add_user_form"),
-          attribute.class(""),
-          event.on_submit(fn(_) { SubmittedAddUser })
-            |> event.prevent_default,
-        ],
-        [
-          html.div([attribute.class("flex flex-col gap-2")], [
-            case model.add_user_form.error {
-              "" -> element.none()
-              msg -> components.error_message_box(msg)
-            },
-            components.form_input(
-              label: "Username",
-              id: "username",
-              name: "username",
-              attributes: [
-                attribute.value(model.add_user_form.username),
-                event.on_input(fn(v) {
-                  UpdatedAddUserForm(
-                    AddUserForm(..model.add_user_form, username: v),
-                  )
-                }),
-              ],
-            ),
-            components.form_input(
-              label: "Email Address",
-              id: "email",
-              name: "email",
-              attributes: [
-                attribute.type_("email"),
-                attribute.value(model.add_user_form.email),
-                event.on_input(fn(v) {
-                  UpdatedAddUserForm(
-                    AddUserForm(..model.add_user_form, email: v),
-                  )
-                }),
-              ],
-            ),
-            components.form_input(
-              label: "Password",
-              id: "password",
-              name: "password",
-              attributes: [
-                attribute.type_("password"),
-                attribute.value(model.add_user_form.password),
-                event.on_input(fn(v) {
-                  UpdatedAddUserForm(
-                    AddUserForm(..model.add_user_form, password: v),
-                  )
-                }),
-              ],
-            ),
-            html.div([], [
-              html.label(
-                [
-                  attribute.for("add_user_select"),
-                  attribute.class(
-                    "block mb-1 text-sm font-medium text-secondary-foreground",
-                  ),
-                ],
-                [element.text("Role")],
+  let is_open = model.active_dialog == Some(AddUserDialog)
+  let id = "add_user_dialog"
+  let form_id = "add_user_form"
+
+  components.dialog_root(
+    is_open:,
+    on_close: ClosedDialog,
+    id:,
+    attributes: [],
+    children: [
+      components.dialog_header(id, [], [html.text("Add User")]),
+      components.dialog_body([], [
+        html.form(
+          [
+            attribute.id(form_id),
+            attribute.class(""),
+            event.on_submit(fn(values) {
+              model.add_user_form
+              |> form.add_values(values)
+              |> form.run
+              |> SubmittedAddUserForm
+            })
+              |> event.prevent_default,
+          ],
+          [
+            html.div([attribute.class("flex flex-col gap-2")], [
+              components.form_root_error_message_box(model.add_user_form),
+              components.form_input(
+                form: model.add_user_form,
+                is: "text",
+                name: user.UsernameField |> user.form_field_to_string,
+                label: "Username",
+                attributes: [],
               ),
-              html.select(
-                [
-                  attribute.id("add_user_select"),
-                  attribute.class(
-                    "py-2 px-3 w-full rounded-md border focus:border-transparent focus:ring-2 focus:outline-none border-input-border placeholder:text-muted-foreground focus:ring-ring",
-                  ),
-                  event.on_change(fn(value) {
-                    case value {
-                      "Admin" ->
-                        UpdatedAddUserForm(
-                          AddUserForm(..model.add_user_form, role: AdminRole),
-                        )
-                      _ ->
-                        UpdatedAddUserForm(
-                          AddUserForm(..model.add_user_form, role: UserRole),
-                        )
-                    }
-                  }),
-                ],
-                [
-                  html.option([], "User"),
-                  html.option([], "Admin"),
-                ],
+              components.form_input(
+                form: model.add_user_form,
+                is: "email",
+                name: user.EmailField |> user.form_field_to_string,
+                label: "Email Address",
+                attributes: [],
               ),
+              components.form_input(
+                form: model.add_user_form,
+                is: "password",
+                name: user.PasswordField |> user.form_field_to_string,
+                label: "Password",
+                attributes: [],
+              ),
+              components.form_input(
+                form: model.add_user_form,
+                is: "password",
+                name: user.ConfirmPasswordField |> user.form_field_to_string,
+                label: "Confirm Password",
+                attributes: [],
+              ),
+              html.div([], [
+                html.label(
+                  [
+                    attribute.for("add_user_select"),
+                    attribute.class(
+                      "block mb-1 text-sm font-medium text-secondary-foreground",
+                    ),
+                  ],
+                  [element.text("Role")],
+                ),
+                html.select(
+                  [
+                    attribute.name(user.RoleField |> user.form_field_to_string),
+                    attribute.id("add_user_select"),
+                    attribute.class(
+                      "py-2 px-3 w-full rounded-md border focus:border-transparent focus:ring-2 focus:outline-none border-input-border placeholder:text-muted-foreground focus:ring-ring",
+                    ),
+                  ],
+                  [
+                    html.option(
+                      [attribute.value(UserRole |> user.role_to_string)],
+                      "User",
+                    ),
+                    html.option(
+                      [attribute.value(AdminRole |> user.role_to_string)],
+                      "Admin",
+                    ),
+                  ],
+                ),
+                ..list.map(
+                  form.field_error_messages(model.add_user_form, "role"),
+                  fn(msg) {
+                    html.p([attribute.class("text-sm text-destructive")], [
+                      html.text(msg),
+                    ])
+                  },
+                )
+              ]),
             ]),
-          ]),
-        ],
-      ),
-      dialog.footer([], [
+          ],
+        ),
+      ]),
+      components.dialog_footer([], [
         components.button(
           variant: ButtonSecondary,
           href: "",
-          attributes: dialog.close_for(dialog_to_id(AddUserDialog)),
+          attributes: [event.on_click(ClosedDialog)],
           children: [html.text("Cancel")],
         ),
         components.button(
@@ -641,7 +764,7 @@ fn view_add_user_dialog(model: Model) -> Element(Msg) {
           href: "",
           attributes: [
             attribute.type_("submit"),
-            attribute.attribute("form", "add_user_form"),
+            attribute.form(form_id),
           ],
           children: [element.text("Submit")],
         ),
@@ -651,116 +774,140 @@ fn view_add_user_dialog(model: Model) -> Element(Msg) {
 }
 
 fn view_edit_user_dialog(model: Model) -> Element(Msg) {
-  dialog.dialog(
-    [
-      dialog.id(dialog_to_id(EditUserDialog)),
-      attribute.class("rounded-lg"),
-    ],
-    [
-      dialog.header([], [dialog.title([], [html.text("Edit User")])]),
-      html.form(
-        [
-          attribute.id("edit_user_form"),
-          attribute.class(""),
-          event.on_submit(fn(_) { SubmittedEditUser })
-            |> event.prevent_default,
-        ],
-        [
-          html.div([attribute.class("flex flex-col gap-2")], [
-            case model.edit_user_form.error {
-              "" -> element.none()
-              msg -> components.error_message_box(msg)
-            },
-            components.form_input(
-              label: "Username",
-              id: "username",
-              name: "username",
-              attributes: [
-                attribute.value(model.edit_user_form.username),
-                event.on_input(fn(v) {
-                  UpdatedEditUserForm(
-                    EditUserForm(..model.edit_user_form, username: v),
-                  )
-                }),
-              ],
-            ),
-            components.form_input(
-              label: "Email Address",
-              id: "email",
-              name: "email",
-              attributes: [
-                attribute.type_("email"),
-                attribute.value(model.edit_user_form.email),
-                event.on_input(fn(v) {
-                  UpdatedEditUserForm(
-                    EditUserForm(..model.edit_user_form, email: v),
-                  )
-                }),
-              ],
-            ),
-            components.form_input(
-              label: "Password",
-              id: "password",
-              name: "password",
-              attributes: [
-                attribute.type_("password"),
-                attribute.value(model.edit_user_form.password),
-                event.on_input(fn(v) {
-                  UpdatedEditUserForm(
-                    EditUserForm(..model.edit_user_form, password: v),
-                  )
-                }),
-              ],
-            ),
-            html.div([], [
-              html.label(
-                [
-                  attribute.for("edit_user_select"),
-                  attribute.class(
-                    "block mb-1 text-sm font-medium text-secondary-foreground",
-                  ),
-                ],
-                [element.text("Role")],
-              ),
-              html.select(
-                [
-                  attribute.id("edit_user_select"),
-                  attribute.class(
-                    "py-2 px-3 w-full rounded-md border focus:border-transparent focus:ring-2 focus:outline-none border-input-border placeholder:text-muted-foreground focus:ring-ring",
-                  ),
-                  event.on_change(fn(value) {
-                    case value {
-                      "Admin" ->
-                        UpdatedEditUserForm(
-                          EditUserForm(..model.edit_user_form, role: AdminRole),
-                        )
-                      _ ->
-                        UpdatedEditUserForm(
-                          EditUserForm(..model.edit_user_form, role: UserRole),
-                        )
-                    }
-                  }),
-                ],
-                [
-                  html.option(
-                    [attribute.selected(model.edit_user_form.role == UserRole)],
-                    "User",
-                  ),
-                  html.option(
-                    [attribute.selected(model.edit_user_form.role == AdminRole)],
-                    "Admin",
-                  ),
+  let is_open = model.active_dialog == Some(EditUserDialog)
+  let id = "edit_user_dialog"
+  let form_id = "edit_user_form"
+
+  components.dialog_root(
+    is_open:,
+    on_close: ClosedDialog,
+    id:,
+    attributes: [],
+    children: [
+      components.dialog_header(id, [], [html.text("Edit User")]),
+      components.dialog_body([], [
+        html.form(
+          [
+            attribute.id(form_id),
+            event.on_submit(fn(values) {
+              model.edit_user_form
+              |> form.add_values(values)
+              |> form.run
+              |> SubmittedEditUserForm
+            })
+              |> event.prevent_default,
+          ],
+          [
+            html.div([attribute.class("flex flex-col gap-2")], [
+              components.form_root_error_message_box(model.edit_user_form),
+              components.form_input(
+                form: model.edit_user_form,
+                is: "text",
+                name: user.UsernameField |> user.form_field_to_string,
+                label: "Username",
+                attributes: [
+                  attribute.value(form.field_value(
+                    model.edit_user_form,
+                    user.UsernameField |> user.form_field_to_string,
+                  )),
                 ],
               ),
+              components.form_input(
+                form: model.edit_user_form,
+                is: "email",
+                name: user.EmailField |> user.form_field_to_string,
+                label: "Email Address",
+                attributes: [
+                  attribute.value(form.field_value(
+                    model.edit_user_form,
+                    user.EmailField |> user.form_field_to_string,
+                  )),
+                ],
+              ),
+              components.form_input(
+                form: model.edit_user_form,
+                is: "password",
+                name: user.PasswordField |> user.form_field_to_string,
+                label: "Password",
+                attributes: [],
+              ),
+              components.form_input(
+                form: model.edit_user_form,
+                is: "password",
+                name: user.ConfirmPasswordField |> user.form_field_to_string,
+                label: "Confirm Password",
+                attributes: [],
+              ),
+              html.div([], [
+                html.label(
+                  [
+                    attribute.for("edit_user_select"),
+                    attribute.class(
+                      "block mb-1 text-sm font-medium text-secondary-foreground",
+                    ),
+                  ],
+                  [element.text("Role")],
+                ),
+                html.select(
+                  [
+                    attribute.name(user.RoleField |> user.form_field_to_string),
+                    attribute.id("edit_user_select"),
+                    attribute.class(
+                      "py-2 px-3 w-full rounded-md border focus:border-transparent focus:ring-2 focus:outline-none border-input-border placeholder:text-muted-foreground focus:ring-ring",
+                    ),
+                  ],
+                  [
+                    html.option(
+                      [
+                        attribute.value(UserRole |> user.role_to_string),
+                        attribute.selected(
+                          form.field_value(
+                            model.edit_user_form,
+                            user.RoleField |> user.form_field_to_string,
+                          )
+                          == user.UserRole |> user.role_to_string,
+                        ),
+                      ],
+                      "User",
+                    ),
+                    html.option(
+                      [
+                        attribute.value(AdminRole |> user.role_to_string),
+                        attribute.selected(
+                          form.field_value(
+                            model.edit_user_form,
+                            user.RoleField |> user.form_field_to_string,
+                          )
+                          == user.AdminRole |> user.role_to_string,
+                        ),
+                      ],
+                      "Admin",
+                    ),
+                  ],
+                ),
+                ..list.map(
+                  form.field_error_messages(
+                    model.edit_user_form,
+                    user.RoleField |> user.form_field_to_string,
+                  ),
+                  fn(msg) {
+                    html.p([attribute.class("text-sm text-destructive")], [
+                      html.text(msg),
+                    ])
+                  },
+                )
+              ]),
             ]),
-          ]),
-        ],
-      ),
-      dialog.footer([], [
+          ],
+        ),
+      ]),
+      components.dialog_footer([], [
         components.button(
           variant: ButtonSecondary,
           href: "",
-          attributes: dialog.close_for(dialog_to_id(EditUserDialog)),
+          attributes: [
+            event.on_click(ClosedDialog),
+          ],
           children: [html.text("Cancel")],
         ),
         components.button(
@@ -768,7 +915,7 @@ fn view_edit_user_dialog(model: Model) -> Element(Msg) {
           href: "",
           attributes: [
             attribute.type_("submit"),
-            attribute.attribute("form", "edit_user_form"),
+            attribute.attribute("form", form_id),
           ],
           children: [element.text("Submit")],
         ),
@@ -778,34 +925,47 @@ fn view_edit_user_dialog(model: Model) -> Element(Msg) {
 }
 
 fn view_confirm_dialog(model: Model) -> Element(Msg) {
-  let display_message = case model.confirm_dialog {
-    Some(ConfirmDialog(message: msg, ..)) -> msg
-    _ -> ""
+  let #(is_open, display_message) = case model.active_dialog {
+    Some(ConfirmDialog(message: msg, ..)) -> #(True, msg)
+    _ -> #(False, "")
   }
 
-  dialog.dialog([dialog.id("confirm"), attribute.class("rounded-lg")], [
-    dialog.header([], [dialog.title([], [html.text("Are you sure?")])]),
-    html.div([attribute.class("flex flex-col gap-2")], [
-      html.p([], [html.text(display_message)]),
-    ]),
-    dialog.footer([], [
-      components.button(
-        variant: ButtonSecondary,
-        href: "",
-        attributes: [
-          event.on_click(ClosedConfirmDialog),
-          ..dialog.close_for("confirm")
-        ],
-        children: [html.text("Cancel")],
-      ),
-      components.button(
-        variant: ButtonDanger,
-        href: "",
-        attributes: [event.on_click(ConfirmedDialog)],
-        children: [html.text("Confirm")],
-      ),
-    ]),
-  ])
+  let id = "confirm_dialog"
+
+  components.dialog_root(
+    is_open:,
+    on_close: ClosedDialog,
+    id:,
+    attributes: [attribute.class("rounded-lg")],
+    children: [
+      components.dialog_header(id, [], [html.text("Are you sure?")]),
+      components.dialog_body([], [
+        html.div([attribute.class("flex flex-col gap-2")], [
+          html.p([], [html.text(display_message)]),
+        ]),
+      ]),
+      components.dialog_footer([], [
+        components.button(
+          variant: ButtonSecondary,
+          href: "",
+          attributes: [
+            attribute.type_("button"),
+            event.on_click(ClosedDialog),
+          ],
+          children: [html.text("Cancel")],
+        ),
+        components.button(
+          variant: ButtonDanger,
+          href: "",
+          attributes: [
+            attribute.type_("button"),
+            event.on_click(ConfirmedDialog),
+          ],
+          children: [html.text("Confirm")],
+        ),
+      ]),
+    ],
+  )
 }
 
 fn view_role_badge(role: AppUserRole) -> Element(Msg) {
@@ -837,10 +997,3 @@ fn format_timestamp(ts: timestamp.Timestamp) -> String {
   |> string.replace(each: "Z", with: "")
   |> string.drop_end(7)
 }
-
-fn close_dialog(id: String) -> Effect(Msg) {
-  effect.from(fn(_) { js_close_dialog("#" <> id) })
-}
-
-@external(javascript, "../ffi.js", "closeDialog")
-fn js_close_dialog(selector: String) -> Nil

@@ -13,7 +13,7 @@ html {
 }
 
 .toast {
-  @apply rounded-lg border border-border bg-card text-card-foreground shadow-lg;
+  @apply z-[100] rounded-lg border border-border bg-card text-card-foreground shadow-lg;
 }
 
 .toast-title {

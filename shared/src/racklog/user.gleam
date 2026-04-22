@@ -115,11 +115,7 @@ pub fn to_json(user: UserDto) -> json.Json {
   ])
 }
 
-pub fn field_error_decoder() -> decode.Decoder(#(String, String)) {
-  use field <- decode.field("field", decode.string)
-  use message <- decode.field("message", decode.string)
-  decode.success(#(field, message))
-}
+pub const minimum_username_length = 3
 
 pub const minimum_password_length = 8
 
@@ -148,4 +144,46 @@ pub fn validate_password(
     // TODO: use zxcvbn to check strength
     True -> Ok(Nil)
   }
+}
+
+pub type FormField {
+  UsernameField
+  EmailField
+  PasswordField
+  ConfirmPasswordField
+  CurrentPasswordField
+  RoleField
+  PreferredUnitField
+}
+
+pub fn form_field_to_string(field: FormField) -> String {
+  case field {
+    UsernameField -> "username"
+    EmailField -> "email"
+    PasswordField -> "password"
+    ConfirmPasswordField -> "confirm_password"
+    CurrentPasswordField -> "current_password"
+    RoleField -> "role"
+    PreferredUnitField -> "preferred_unit"
+  }
+}
+
+pub fn form_field_decoder() -> decode.Decoder(FormField) {
+  use form_field_string <- decode.then(decode.string)
+  case form_field_string {
+    "username" -> decode.success(UsernameField)
+    "email" -> decode.success(EmailField)
+    "password" -> decode.success(PasswordField)
+    "confirm_password" -> decode.success(ConfirmPasswordField)
+    "current_password" -> decode.success(CurrentPasswordField)
+    "role" -> decode.success(RoleField)
+    "preferred_unit" -> decode.success(PreferredUnitField)
+    _ -> decode.failure(UsernameField, "user form field")
+  }
+}
+
+pub fn field_error_decoder() -> decode.Decoder(#(FormField, String)) {
+  use field <- decode.field("field", form_field_decoder())
+  use message <- decode.field("message", decode.string)
+  decode.success(#(field, message))
 }

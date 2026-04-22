@@ -289,7 +289,7 @@ fn view_app(user: UserDto, model: Model) -> Element(Msg) {
   html.div([attribute.class("flex overflow-hidden flex-col w-full h-screen")], [
     view_header(user),
     html.div(
-      [attribute.class("flex overflow-hidden z-40 flex-1 w-full min-h-0")],
+      [attribute.class("flex overflow-hidden flex-1 w-full min-h-0")],
       case model.route {
         Index -> [html.text("index")]
         Equipment(m) -> view_route(m, equipment.view, EquipmentMsg)

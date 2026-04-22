@@ -2,10 +2,12 @@ import argus
 import auth/sql
 import gleam/dynamic/decode
 import gleam/http/response
+import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
+import gleam/string
 import gleam/time/timestamp
 import middleware
 import pog
@@ -205,6 +207,32 @@ pub fn create_user(req: Request, ctx: Context) -> Response {
       |> result.replace_error(wisp.unprocessable_content()),
     )
 
+    use _ <- result.try(
+      case
+        user_details.username |> string.length < user.minimum_username_length
+      {
+        True ->
+          Error(field_error(
+            user.UsernameField |> user.form_field_to_string,
+            // TODO: create shared UsernameValidationError type?
+            "Username must be at least "
+              <> user.minimum_username_length |> int.to_string
+              <> " characters long.",
+          ))
+        False -> Ok(Nil)
+      },
+    )
+
+    use _ <- result.try(
+      user.validate_password(user_details.password)
+      |> result.map_error(fn(error) {
+        field_error(
+          user.PasswordField |> user.form_field_to_string,
+          user.password_validation_error_to_string(error),
+        )
+      }),
+    )
+
     let hashed_password = hash_password(user_details.password)
 
     use returned <- result.try(
@@ -215,7 +243,21 @@ pub fn create_user(req: Request, ctx: Context) -> Response {
         hashed_password,
         shared_role_to_sql_role(user_details.user_role),
       )
-      |> result.replace_error(wisp.internal_server_error()),
+      |> result.map_error(fn(error) {
+        case error {
+          pog.ConstraintViolated(constraint: "app_user_username_key", ..) ->
+            conflict_error(
+              user.UsernameField |> user.form_field_to_string,
+              "A user with this username already exists.",
+            )
+          pog.ConstraintViolated(constraint: "app_user_email_key", ..) ->
+            conflict_error(
+              user.EmailField |> user.form_field_to_string,
+              "A user with this email address already exists.",
+            )
+          _ -> wisp.internal_server_error()
+        }
+      }),
     )
 
     use user <- result.try(
@@ -321,7 +363,10 @@ pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
         True, _, _, _ -> Ok(Nil)
         False, "", "", _ -> Ok(Nil)
         False, _, _, None ->
-          Error(field_error("current_password", "Current password is required."))
+          Error(field_error(
+            user.CurrentPasswordField |> user.form_field_to_string,
+            "Current password is required.",
+          ))
         _, _, _, Some(current) -> verify_current_password(ctx, id, current)
       },
     )
@@ -332,7 +377,7 @@ pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
         user.validate_password(password)
         |> result.map_error(fn(error) {
           field_error(
-            "password",
+            user.PasswordField |> user.form_field_to_string,
             user.password_validation_error_to_string(error),
           )
         })
@@ -365,8 +410,16 @@ pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
       )
       |> result.map_error(fn(e) {
         case e {
+          pog.ConstraintViolated(constraint: "app_user_username_key", ..) ->
+            conflict_error(
+              user.UsernameField |> user.form_field_to_string,
+              "A user with this username already exists.",
+            )
           pog.ConstraintViolated(_, "app_user_email_key", _) ->
-            conflict_error("email", "This email is already in use.")
+            conflict_error(
+              user.EmailField |> user.form_field_to_string,
+              "A user with this email address already exists.",
+            )
           _ -> wisp.internal_server_error()
         }
       }),
@@ -415,7 +468,10 @@ fn verify_current_password(
   case argus.verify(user.hashed_password, current_password) {
     Ok(True) -> Ok(Nil)
     Ok(False) ->
-      Error(field_error("current_password", "Incorrect current password."))
+      Error(field_error(
+        user.CurrentPasswordField |> user.form_field_to_string,
+        "Incorrect current password.",
+      ))
     Error(_) -> Error(wisp.internal_server_error())
   }
 }

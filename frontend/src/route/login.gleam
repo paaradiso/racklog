@@ -10,6 +10,7 @@ import lustre/element.{type Element}
 import lustre/element/html
 import lustre/event
 import modem
+import racklog/user
 import rsvp.{HttpError, NetworkError}
 import utils
 
@@ -28,8 +29,14 @@ pub type Msg {
 
 fn init_form() -> Form(LoginData) {
   form.new({
-    use username <- form.field("username", form.parse_string)
-    use password <- form.field("password", form.parse_string)
+    use username <- form.field(
+      user.UsernameField |> user.form_field_to_string,
+      form.parse_string,
+    )
+    use password <- form.field(
+      user.PasswordField |> user.form_field_to_string,
+      form.parse_string,
+    )
     form.success(LoginData(username:, password:))
   })
 }
@@ -129,17 +136,17 @@ pub fn view(model: Model) -> List(Element(Msg)) {
                     messages |> string.join(with: ", "),
                   )
               },
-              components.formal_input(
+              components.form_input(
                 form: model.form,
                 is: "text",
-                name: "username",
+                name: user.UsernameField |> user.form_field_to_string,
                 label: "Username",
                 attributes: [],
               ),
-              components.formal_input(
+              components.form_input(
                 form: model.form,
                 is: "password",
-                name: "password",
+                name: user.PasswordField |> user.form_field_to_string,
                 label: "Password",
                 attributes: [],
               ),

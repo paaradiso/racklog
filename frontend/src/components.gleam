@@ -1,9 +1,13 @@
 import formal/form.{type Form}
+import gleam/dynamic/decode
 import gleam/list
+import gleam/string
 import lucide_lustre
 import lustre/attribute.{type Attribute}
 import lustre/element.{type Element}
 import lustre/element/html
+import lustre/event
+import utils
 
 pub type ButtonVariant {
   ButtonPrimary
@@ -12,7 +16,7 @@ pub type ButtonVariant {
   ButtonDanger
 }
 
-pub fn button_classes(variant: ButtonVariant) -> List(Attribute(_)) {
+fn button_classes(variant: ButtonVariant) -> List(Attribute(_)) {
   let variant_styles = case variant {
     ButtonPrimary -> "bg-foreground hover:bg-foreground/90 text-background"
     ButtonSecondary ->
@@ -61,33 +65,6 @@ pub fn link(
 }
 
 pub fn form_input(
-  label label: String,
-  id id: String,
-  name name: String,
-  attributes attributes: List(Attribute(msg)),
-) -> Element(msg) {
-  html.div([], [
-    html.label(
-      [
-        attribute.for(id),
-        attribute.class(
-          "block mb-1 text-sm font-medium text-secondary-foreground",
-        ),
-      ],
-      [element.text(label)],
-    ),
-    html.input([
-      attribute.id(id),
-      attribute.name(name),
-      attribute.class(
-        "py-2 px-3 w-full rounded-md border focus:border-transparent focus:ring-2 focus:outline-none border-input-border placeholder:text-muted-foreground focus:ring-ring",
-      ),
-      ..attributes
-    ]),
-  ])
-}
-
-pub fn formal_input(
   form form: Form(a),
   is type_: String,
   name name: String,
@@ -151,6 +128,13 @@ pub fn error_message_box(message message: String) -> Element(msg) {
   )
 }
 
+pub fn form_root_error_message_box(form form: Form(a)) -> Element(msg) {
+  case form.field_error_messages(form, utils.root_error_field) {
+    [] -> element.none()
+    messages -> error_message_box(message: string.join(messages, ", "))
+  }
+}
+
 pub fn dropdown(
   trigger trigger: List(Element(msg)),
   items items: List(Element(msg)),
@@ -203,5 +187,111 @@ pub fn dropdown_item(
         children,
       ),
     ],
+  )
+}
+
+fn dialog_on_escape(on_close: msg) -> Attribute(msg) {
+  let key_decoder =
+    decode.field("key", decode.string, fn(key) {
+      case key {
+        "Escape" -> decode.success(on_close)
+        _ -> decode.failure(on_close, "msg")
+      }
+    })
+  event.on("keydown", key_decoder)
+}
+
+pub fn dialog_root(
+  is_open is_open: Bool,
+  on_close on_close: msg,
+  id dialog_id: String,
+  attributes attributes: List(Attribute(msg)),
+  children children: List(Element(msg)),
+) -> Element(msg) {
+  case is_open {
+    False -> element.none()
+    True ->
+      html.div(
+        [
+          dialog_on_escape(on_close),
+          attribute.class(
+            "flex fixed inset-0 z-50 justify-center items-center p-4 sm:p-0",
+          ),
+          attribute.tabindex(-1),
+          attribute.autofocus(True),
+        ],
+        [
+          html.div(
+            [
+              attribute.class("absolute inset-0 bg-black/40 backdrop-blur-xs"),
+              attribute.aria_hidden(True),
+              event.on_click(on_close),
+            ],
+            [],
+          ),
+          html.dialog(
+            [
+              attribute.open(True),
+              attribute.id(dialog_id),
+              attribute.role("dialog"),
+              attribute.aria_modal(True),
+              attribute.aria_labelledby(dialog_id <> "-title"),
+              attribute.class(
+                "flex relative z-10 flex-col w-full max-w-lg rounded-xl border shadow-lg bg-card text-card-foreground border-border",
+              ),
+              ..attributes
+            ],
+            children,
+          ),
+        ],
+      )
+  }
+}
+
+pub fn dialog_header(
+  dialog_id: String,
+  attributes: List(Attribute(msg)),
+  children: List(Element(msg)),
+) -> Element(msg) {
+  html.div(
+    [
+      attribute.class("flex items-center py-4 px-6 border-b border-border"),
+      ..attributes
+    ],
+    [
+      html.h2(
+        [
+          attribute.id(dialog_id <> "-title"),
+          // m-0 to remove oat class, remove later
+          attribute.class("m-0 text-xl font-medium tracking-tight"),
+        ],
+        children,
+      ),
+    ],
+  )
+}
+
+pub fn dialog_body(
+  attributes: List(Attribute(msg)),
+  children: List(Element(msg)),
+) -> Element(msg) {
+  html.div(
+    [attribute.class("overflow-y-auto flex-1 py-4 px-6"), ..attributes],
+    children,
+  )
+}
+
+pub fn dialog_footer(
+  attributes: List(Attribute(msg)),
+  children: List(Element(msg)),
+) -> Element(msg) {
+  html.div(
+    [
+      attribute.class(
+        "flex gap-2 justify-end items-center py-4 px-6 border-t border-border bg-muted/30",
+      ),
+      ..attributes
+    ],
+    children,
   )
 }
