@@ -147,7 +147,7 @@ pub fn login(req: Request, ctx: Context) -> Response {
       |> result.replace_error(wisp.internal_server_error()),
     )
     use user <- result.try(
-      list.first(returned.rows) |> result.replace_error(wisp.not_found()),
+      list.first(returned.rows) |> result.replace_error(wisp.response(401)),
     )
     use valid <- result.try(
       argus.verify(user.hashed_password, password)
