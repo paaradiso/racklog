@@ -1,6 +1,6 @@
 import components.{ButtonPrimary}
 import formal/form.{type Form}
-import gleam/http/response.{type Response}
+import gleam/http/response.{type Response, Response}
 import gleam/json
 import gleam/option.{None}
 import gleam/string
@@ -10,9 +10,8 @@ import lustre/element.{type Element}
 import lustre/element/html
 import lustre/event
 import modem
-import rsvp
-
-const root_error_field = "root"
+import rsvp.{HttpError, NetworkError}
+import utils
 
 pub type LoginData {
   LoginData(username: String, password: String)
@@ -57,41 +56,37 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
         )
       #(Model(form: init_form(), is_loading: True), fx)
     }
-    GotLoginResponse(Ok(response)) -> {
-      case response.status {
-        200 -> #(model, modem.push("/", None, None))
-        401 -> #(
-          Model(
-            is_loading: False,
-            form: model.form
-              |> form.add_error(
-                root_error_field,
-                form.CustomError("Invalid username or password."),
-              ),
+    GotLoginResponse(Ok(_)) -> {
+      #(model, modem.push("/", None, None))
+    }
+    GotLoginResponse(Error(HttpError(Response(status: 401, ..)))) -> {
+      #(
+        Model(
+          form: utils.add_form_root_error(
+            model.form,
+            "Invalid username or password.",
           ),
-          effect.none(),
-        )
-        _ -> #(
-          Model(
-            form: model.form
-              |> form.add_error(
-                root_error_field,
-                form.CustomError("Something went wrong."),
-              ),
-            is_loading: False,
+          is_loading: False,
+        ),
+        effect.none(),
+      )
+    }
+    GotLoginResponse(Error(NetworkError)) -> {
+      #(
+        Model(
+          form: utils.add_form_root_error(
+            model.form,
+            "Network error. Please check your internet connection.",
           ),
-          effect.none(),
-        )
-      }
+          is_loading: False,
+        ),
+        effect.none(),
+      )
     }
     GotLoginResponse(Error(_)) -> {
       #(
         Model(
-          form: model.form
-            |> form.add_error(
-              root_error_field,
-              form.CustomError("Something went wrong."),
-            ),
+          form: utils.add_form_root_error(model.form, "Something went wrong."),
           is_loading: False,
         ),
         effect.none(),
@@ -125,7 +120,9 @@ pub fn view(model: Model) -> List(Element(Msg)) {
                 |> event.prevent_default,
             ],
             [
-              case form.field_error_messages(model.form, root_error_field) {
+              case
+                form.field_error_messages(model.form, utils.root_error_field)
+              {
                 [] -> element.none()
                 messages ->
                   components.error_message_box(
