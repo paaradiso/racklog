@@ -27,4 +27,4 @@ todo:
     - [ ] create `routine`s
 - [ ] other workout types? climbing?
 - [x] ~~add OutMsg type (in admin.gleam?) and show toasts in frontend.gleam~~ show toasts
-- [ ] change login to use username (or both?)
+- [x] change login to use username (or both?)
