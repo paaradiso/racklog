@@ -32,5 +32,5 @@ envie = ">= 1.1.0 and < 2.0.0"
 
 [dev_dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
-cigogne = ">= 5.0.5 and < 6.0.0"
 glinter = ">= 2.11.1 and < 3.0.0"
+cigogne = ">= 5.0.5 and < 6.0.0"

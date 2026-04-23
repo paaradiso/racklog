@@ -1,4 +1,5 @@
 import argus
+import auth/map
 import auth/sql
 import gleam/dynamic/decode
 import gleam/http/response
@@ -8,7 +9,6 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
-import gleam/time/timestamp
 import middleware
 import pog
 import racklog/user.{type AppUserRole, type PreferredUnit}
@@ -74,55 +74,6 @@ fn update_user_payload_decoder() -> decode.Decoder(UpdateUserPayload) {
   ))
 }
 
-fn user_credentials_decoder() -> decode.Decoder(#(String, String)) {
-  use username <- decode.field("username", decode.string)
-  use password <- decode.field("password", decode.string)
-  decode.success(#(username, password))
-}
-
-fn shared_role_to_sql_role(role: user.AppUserRole) -> sql.AppUserRole {
-  case role {
-    user.AdminRole -> sql.Admin
-    user.UserRole -> sql.User
-  }
-}
-
-fn sql_role_to_shared_role(role: sql.AppUserRole) -> user.AppUserRole {
-  case role {
-    sql.Admin -> user.AdminRole
-    sql.User -> user.UserRole
-  }
-}
-
-fn sql_preferred_unit_to_shared_preferred_unit(
-  preferred_unit: sql.PreferredUnit,
-) -> user.PreferredUnit {
-  case preferred_unit {
-    sql.Kg -> user.Kg
-    sql.Lb -> user.Lb
-  }
-}
-
-fn row_to_dto(
-  id: Int,
-  username: String,
-  email: String,
-  role: sql.AppUserRole,
-  preferred_unit: sql.PreferredUnit,
-  created_at: timestamp.Timestamp,
-  updated_at: timestamp.Timestamp,
-) -> user.UserDto {
-  user.UserDto(
-    id:,
-    username:,
-    email:,
-    role: sql_role_to_shared_role(role),
-    preferred_unit: sql_preferred_unit_to_shared_preferred_unit(preferred_unit),
-    created_at:,
-    updated_at:,
-  )
-}
-
 pub fn hash_password(password password: String) -> String {
   // https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html#argon2id
   let assert Ok(hashes) =
@@ -139,9 +90,15 @@ pub fn hash_password(password password: String) -> String {
 pub fn login(req: Request, ctx: Context) -> Response {
   use json <- wisp.require_json(req)
 
+  let decoder = {
+    use username <- decode.field("username", decode.string)
+    use password <- decode.field("password", decode.string)
+    decode.success(#(username, password))
+  }
+
   let auth_result = {
     use #(username, password) <- result.try(
-      decode.run(json, user_credentials_decoder())
+      decode.run(json, decoder)
       |> result.replace_error(wisp.unprocessable_content()),
     )
     use returned <- result.try(
@@ -241,7 +198,7 @@ pub fn create_user(req: Request, ctx: Context) -> Response {
         user_details.username,
         user_details.email,
         hashed_password,
-        shared_role_to_sql_role(user_details.user_role),
+        map.shared_role_to_sql_role(user_details.user_role),
       )
       |> result.map_error(fn(error) {
         case error {
@@ -266,7 +223,7 @@ pub fn create_user(req: Request, ctx: Context) -> Response {
     )
 
     Ok(
-      row_to_dto(
+      map.row_to_dto(
         user.id,
         user.username,
         user.email,
@@ -286,26 +243,11 @@ pub fn create_user(req: Request, ctx: Context) -> Response {
 }
 
 pub fn me(_req: Request, ctx: Context) -> Response {
-  use user_id <- middleware.require_authentication(ctx)
-
-  case sql.get_user_by_id(ctx.db, user_id) {
-    Ok(pog.Returned(rows: [user], ..)) ->
-      row_to_dto(
-        user.id,
-        user.username,
-        user.email,
-        user.user_role,
-        user.preferred_unit,
-        user.created_at,
-        user.updated_at,
-      )
-      |> user.to_json
-      |> json.to_string
-      |> wisp.json_response(200)
-    Ok(pog.Returned(rows: [_, _, ..], ..)) ->
-      panic as "multiple users returned for one user id"
-    _ -> wisp.response(401)
-  }
+  use user <- middleware.require_authentication(ctx)
+  user
+  |> user.to_json
+  |> json.to_string
+  |> wisp.json_response(200)
 }
 
 pub fn list_users(_req: Request, ctx: Context) -> Response {
@@ -315,7 +257,7 @@ pub fn list_users(_req: Request, ctx: Context) -> Response {
     Ok(returned) ->
       returned.rows
       |> json.array(fn(row) {
-        row_to_dto(
+        map.row_to_dto(
           row.id,
           row.username,
           row.email,
@@ -344,7 +286,7 @@ pub fn delete_user_by_id(_req: Request, ctx: Context, id: String) -> Response {
 
 pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
   use id <- middleware.require_valid_id(id)
-  use _ <- middleware.require_authorisation(ctx, id)
+  use user <- middleware.require_authorisation(ctx, id)
   use json <- wisp.require_json(req)
 
   let update_user_result = {
@@ -355,7 +297,7 @@ pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
 
     use _ <- result.try(
       case
-        is_admin(ctx, ctx.user_id),
+        user.role == user.AdminRole,
         payload.password,
         payload.email,
         payload.current_password
@@ -431,7 +373,7 @@ pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
     )
 
     Ok(
-      row_to_dto(
+      map.row_to_dto(
         user.id,
         user.username,
         user.email,
@@ -473,21 +415,6 @@ fn verify_current_password(
         "Incorrect current password.",
       ))
     Error(_) -> Error(wisp.internal_server_error())
-  }
-}
-
-fn is_admin(ctx: Context, user_id: Option(Int)) -> Bool {
-  case user_id {
-    None -> False
-    Some(id) -> {
-      case sql.get_user_by_id(ctx.db, id) {
-        Ok(returned) ->
-          list.first(returned.rows)
-          |> result.map(fn(u) { u.user_role == sql.Admin })
-          |> result.unwrap(False)
-        Error(_) -> False
-      }
-    }
   }
 }
 

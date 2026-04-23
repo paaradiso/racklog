@@ -11,7 +11,7 @@ pub fn handle_request(req: Request, ctx: Context) -> Response {
   use <- wisp.log_request(req)
   use <- wisp.rescue_crashes
   use req <- wisp.handle_head(req)
-  let ctx = middleware.load_session(req, ctx)
+  use ctx <- middleware.load_session(req, ctx)
 
   case req.method, wisp.path_segments(req) {
     Post, ["api", "login"] -> auth.login(req, ctx)
@@ -21,7 +21,7 @@ pub fn handle_request(req: Request, ctx: Context) -> Response {
 }
 
 fn handle_authenticated(req: Request, ctx: Context) -> Response {
-  use _user_id <- middleware.require_authentication(ctx)
+  use _ <- middleware.require_authentication(ctx)
 
   case req.method, wisp.path_segments(req) {
     Post, ["api", "logout"] -> auth.logout(req, ctx)

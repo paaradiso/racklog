@@ -13,7 +13,7 @@ pub fn main() {
   wisp.configure_logger()
 
   let db = db.connect()
-  let context = web.Context(db:, user_id: option.None, session_id: option.None)
+  let context = web.Context(db:, session_id: option.None, user: option.None)
 
   let handler = router.handle_request(_, context)
   let assert Ok(_) =
