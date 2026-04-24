@@ -1,6 +1,7 @@
 import argus
 import auth/map
 import auth/sql
+import error
 import gleam/dynamic/decode
 import gleam/http/response
 import gleam/int
@@ -103,23 +104,23 @@ pub fn login(req: Request, ctx: Context) -> Response {
     )
     use returned <- result.try(
       sql.get_user_by_username(ctx.db, username)
-      |> result.replace_error(wisp.internal_server_error()),
+      |> result.replace_error(error.internal()),
     )
     use user <- result.try(
-      list.first(returned.rows) |> result.replace_error(wisp.response(401)),
+      list.first(returned.rows) |> result.replace_error(error.unauthorized()),
     )
     use valid <- result.try(
       argus.verify(user.hashed_password, password)
-      |> result.replace_error(wisp.response(401)),
+      |> result.replace_error(error.unauthorized()),
     )
     use _ <- result.try(case valid {
-      False -> Error(wisp.response(401))
+      False -> Error(error.unauthorized())
       True -> Ok(Nil)
     })
     let session_id = uuid.v7() |> uuid.to_string
     use _ <- result.try(
       sql.create_session(ctx.db, session_id, user.id)
-      |> result.replace_error(wisp.internal_server_error()),
+      |> result.replace_error(error.internal()),
     )
     Ok(session_id)
   }
@@ -142,7 +143,7 @@ pub fn logout(req: Request, ctx: Context) -> Response {
   use session_id <- middleware.require_session(ctx)
 
   case sql.delete_session_by_id(ctx.db, session_id) {
-    Error(_) -> wisp.internal_server_error()
+    Error(_) -> error.internal()
     Ok(_) ->
       wisp.response(200)
       |> wisp.set_cookie(
@@ -169,7 +170,7 @@ pub fn create_user(req: Request, ctx: Context) -> Response {
         user_details.username |> string.length < user.minimum_username_length
       {
         True ->
-          Error(field_error(
+          Error(error.validation(
             user.UsernameField |> user.form_field_to_string,
             // TODO: create shared UsernameValidationError type?
             "Username must be at least "
@@ -183,7 +184,7 @@ pub fn create_user(req: Request, ctx: Context) -> Response {
     use _ <- result.try(
       user.validate_password(user_details.password)
       |> result.map_error(fn(error) {
-        field_error(
+        error.validation(
           user.PasswordField |> user.form_field_to_string,
           user.password_validation_error_to_string(error),
         )
@@ -203,23 +204,23 @@ pub fn create_user(req: Request, ctx: Context) -> Response {
       |> result.map_error(fn(error) {
         case error {
           pog.ConstraintViolated(constraint: "app_user_username_key", ..) ->
-            conflict_error(
+            error.conflict(
               user.UsernameField |> user.form_field_to_string,
               "A user with this username already exists.",
             )
           pog.ConstraintViolated(constraint: "app_user_email_key", ..) ->
-            conflict_error(
+            error.conflict(
               user.EmailField |> user.form_field_to_string,
               "A user with this email address already exists.",
             )
-          _ -> wisp.internal_server_error()
+          _ -> error.internal()
         }
       }),
     )
 
     use user <- result.try(
       list.first(returned.rows)
-      |> result.replace_error(wisp.not_found()),
+      |> result.replace_error(error.not_found()),
     )
 
     Ok(
@@ -270,7 +271,7 @@ pub fn list_users(_req: Request, ctx: Context) -> Response {
       })
       |> json.to_string
       |> wisp.json_response(200)
-    Error(_) -> wisp.internal_server_error()
+    Error(_) -> error.internal()
   }
 }
 
@@ -280,7 +281,7 @@ pub fn delete_user_by_id(_req: Request, ctx: Context, id: String) -> Response {
 
   case sql.delete_user_by_id(ctx.db, id) {
     Ok(_) -> wisp.no_content()
-    Error(_) -> wisp.internal_server_error()
+    Error(_) -> error.internal()
   }
 }
 
@@ -305,7 +306,7 @@ pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
         True, _, _, _ -> Ok(Nil)
         False, "", "", _ -> Ok(Nil)
         False, _, _, None ->
-          Error(field_error(
+          Error(error.validation(
             user.CurrentPasswordField |> user.form_field_to_string,
             "Current password is required.",
           ))
@@ -318,7 +319,7 @@ pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
       password ->
         user.validate_password(password)
         |> result.map_error(fn(error) {
-          field_error(
+          error.validation(
             user.PasswordField |> user.form_field_to_string,
             user.password_validation_error_to_string(error),
           )
@@ -353,23 +354,23 @@ pub fn update_user_by_id(req: Request, ctx: Context, id: String) -> Response {
       |> result.map_error(fn(e) {
         case e {
           pog.ConstraintViolated(constraint: "app_user_username_key", ..) ->
-            conflict_error(
+            error.conflict(
               user.UsernameField |> user.form_field_to_string,
               "A user with this username already exists.",
             )
           pog.ConstraintViolated(_, "app_user_email_key", _) ->
-            conflict_error(
+            error.conflict(
               user.EmailField |> user.form_field_to_string,
               "A user with this email address already exists.",
             )
-          _ -> wisp.internal_server_error()
+          _ -> error.internal()
         }
       }),
     )
 
     use user <- result.try(
       list.first(returned.rows)
-      |> result.replace_error(wisp.not_found()),
+      |> result.replace_error(error.not_found()),
     )
 
     Ok(
@@ -400,42 +401,20 @@ fn verify_current_password(
 ) -> Result(Nil, response.Response(wisp.Body)) {
   use returned <- result.try(
     sql.get_user_by_id(ctx.db, id)
-    |> result.replace_error(wisp.internal_server_error()),
+    |> result.replace_error(error.internal()),
   )
   use user <- result.try(
     list.first(returned.rows)
-    |> result.replace_error(wisp.not_found()),
+    |> result.replace_error(error.not_found()),
   )
 
   case argus.verify(user.hashed_password, current_password) {
     Ok(True) -> Ok(Nil)
     Ok(False) ->
-      Error(field_error(
+      Error(error.validation(
         user.CurrentPasswordField |> user.form_field_to_string,
         "Incorrect current password.",
       ))
-    Error(_) -> Error(wisp.internal_server_error())
+    Error(_) -> Error(error.internal())
   }
-}
-
-fn conflict_error(field: String, message: String) -> Response {
-  wisp.response(409)
-  |> wisp.json_body(
-    json.object([
-      #("field", json.string(field)),
-      #("message", json.string(message)),
-    ])
-    |> json.to_string,
-  )
-}
-
-fn field_error(field: String, message: String) -> Response {
-  wisp.response(422)
-  |> wisp.json_body(
-    json.object([
-      #("field", json.string(field)),
-      #("message", json.string(message)),
-    ])
-    |> json.to_string,
-  )
 }

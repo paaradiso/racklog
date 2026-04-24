@@ -181,9 +181,3 @@ pub fn form_field_decoder() -> decode.Decoder(FormField) {
     _ -> decode.failure(UsernameField, "user form field")
   }
 }
-
-pub fn field_error_decoder() -> decode.Decoder(#(FormField, String)) {
-  use field <- decode.field("field", form_field_decoder())
-  use message <- decode.field("message", decode.string)
-  decode.success(#(field, message))
-}

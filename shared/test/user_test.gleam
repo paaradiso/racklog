@@ -331,60 +331,6 @@ pub fn decoder_empty_object_test() {
   |> should.be_error()
 }
 
-pub fn field_error_decoder_valid_test() {
-  json.object([
-    #("field", json.string("email")),
-    #("message", json.string("...")),
-  ])
-  |> json.to_string
-  |> json.parse(user.field_error_decoder())
-  |> should.equal(Ok(#(user.EmailField, "...")))
-}
-
-pub fn field_error_decoder_invalid_field_test() {
-  json.object([
-    #("field", json.string("invalid")),
-    #("message", json.string("...")),
-  ])
-  |> json.to_string
-  |> json.parse(user.field_error_decoder())
-  |> should.be_error()
-}
-
-pub fn field_error_decoder_missing_message_test() {
-  json.object([#("field", json.string("email"))])
-  |> json.to_string
-  |> json.parse(user.field_error_decoder())
-  |> should.be_error()
-}
-
-pub fn field_error_decoder_missing_field_test() {
-  json.object([#("message", json.string("..."))])
-  |> json.to_string
-  |> json.parse(user.field_error_decoder())
-  |> should.be_error()
-}
-
-pub fn field_error_decoder_non_string_field_test() {
-  json.object([
-    #("field", json.int(1)),
-    #("message", json.string("...")),
-  ])
-  |> json.to_string
-  |> json.parse(user.field_error_decoder())
-  |> should.be_error()
-}
-
-pub fn field_error_decoder_non_string_message_test() {
-  json.object([
-    #("field", json.string("email")),
-    #("message", json.int(1)),
-  ])
-  |> json.to_string
-  |> json.parse(user.field_error_decoder())
-  |> should.be_error()
-}
-
 pub fn dto_round_trip_test() {
   let u = create_user()
   u

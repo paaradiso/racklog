@@ -12,6 +12,7 @@ import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
 import lustre/event
+import racklog/error
 import racklog/user.{
   type PreferredUnit, type UserDto, AdminRole, Kg, Lb, UserRole,
 }
@@ -153,33 +154,31 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
         variant: toast.Success,
       ),
     )
-    SavedSecurityForm(Error(rsvp.HttpError(response)))
-      if response.status == 400 || response.status == 401
-    -> #(
-      Model(
-        ..model,
-        security_form: utils.add_form_root_error(
-          model.security_form,
-          response.body,
-        ),
-      ),
-      effect.none(),
-    )
-    SavedSecurityForm(Error(rsvp.HttpError(response)))
-      if response.status == 422 || response.status == 409
-    -> {
-      let security_form = case
-        json.parse(response.body, user.field_error_decoder())
-      {
-        Ok(#(field, message)) ->
-          form.add_error(
-            model.security_form,
-            user.form_field_to_string(field),
-            form.CustomError(message),
-          )
-        Error(_) -> model.security_form
+    SavedSecurityForm(Error(rsvp.HttpError(response))) -> {
+      case json.parse(response.body, error.decoder()) {
+        Ok(error.ValidationError(field:, message:))
+        | Ok(error.ConflictError(field:, message:)) -> {
+          let security_form =
+            utils.add_form_custom_error(model.security_form, field, message)
+          #(Model(..model, security_form:), effect.none())
+        }
+        Ok(err) -> #(
+          model,
+          fx.toast(
+            title: "Error",
+            description: error.to_string(err),
+            variant: toast.Danger,
+          ),
+        )
+        Error(_) -> #(
+          model,
+          fx.toast(
+            title: "Error",
+            description: "Failed to save settings.",
+            variant: toast.Danger,
+          ),
+        )
       }
-      #(Model(..model, security_form:), effect.none())
     }
     SavedSecurityForm(Error(_)) -> #(
       model,
@@ -279,18 +278,22 @@ pub fn view(model: Model) -> List(Element(Msg)) {
                   attributes: [],
                 ),
 
-                html.hr([attribute.class("mt-2 mb-0 w-full color-border")]),
-
                 case model.user.role {
                   AdminRole -> element.none()
                   UserRole ->
-                    components.form_input(
-                      form: model.security_form,
-                      is: "password",
-                      name: user.form_field_to_string(user.CurrentPasswordField),
-                      label: "Current Password",
-                      attributes: [],
-                    )
+                    element.fragment([
+                      html.hr([attribute.class("mt-2 mb-0 w-full color-border")]),
+
+                      components.form_input(
+                        form: model.security_form,
+                        is: "password",
+                        name: user.form_field_to_string(
+                          user.CurrentPasswordField,
+                        ),
+                        label: "Current Password",
+                        attributes: [],
+                      ),
+                    ])
                 },
                 components.button(
                   variant: ButtonPrimary,

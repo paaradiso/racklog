@@ -2,7 +2,6 @@ import components.{ButtonDanger, ButtonOutline, ButtonPrimary, ButtonSecondary}
 import formal/form.{type Form}
 import fx
 import glaze/oat/toast
-import gleam/http/response.{Response}
 import gleam/int
 import gleam/json
 import gleam/list
@@ -17,8 +16,9 @@ import lustre/element.{type Element}
 import lustre/element/html
 import lustre/event
 import modem
+import racklog/error
 import racklog/user.{type AppUserRole, type UserDto, AdminRole, UserRole}
-import rsvp.{HttpError}
+import rsvp
 import utils
 
 pub type Tab {
@@ -364,34 +364,40 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
         variant: toast.Success,
       ),
     )
-    SavedAddUserForm(Error(HttpError(Response(status:, body:, ..))))
-      if status == 409 || status == 422
-    -> {
-      let add_user_form = case json.parse(body, user.field_error_decoder()) {
-        Ok(#(field, message)) ->
-          utils.add_form_custom_error(
-            model.add_user_form,
-            user.form_field_to_string(field),
-            message,
-          )
-        Error(_) -> model.add_user_form
+    SavedAddUserForm(Error(rsvp.HttpError(response))) -> {
+      case json.parse(response.body, error.decoder()) {
+        Ok(error.ValidationError(field:, message:))
+        | Ok(error.ConflictError(field:, message:)) -> {
+          let add_user_form =
+            utils.add_form_custom_error(model.add_user_form, field, message)
+          #(Model(..model, add_user_form:), effect.none())
+        }
+        Ok(err) -> #(
+          model,
+          fx.toast(
+            title: "Error",
+            description: error.to_string(err),
+            variant: toast.Danger,
+          ),
+        )
+        Error(_) -> #(
+          model,
+          fx.toast(
+            title: "Error",
+            description: "Failed to add user.",
+            variant: toast.Danger,
+          ),
+        )
       }
-      #(
-        Model(..model, add_user_form:),
-        effect.none(),
-        // fx.toast(title: "Error", description: body, variant: toast.Danger),
-      )
     }
-    SavedAddUserForm(Error(_)) -> {
-      #(
-        model,
-        fx.toast(
-          title: "Error",
-          description: "Failed to add user.",
-          variant: toast.Danger,
-        ),
-      )
-    }
+    SavedAddUserForm(Error(_)) -> #(
+      model,
+      fx.toast(
+        title: "Error",
+        description: "Failed to add user.",
+        variant: toast.Danger,
+      ),
+    )
     SubmittedEditUserForm(Error(edit_user_form)) -> #(
       Model(..model, edit_user_form:),
       effect.none(),
@@ -444,39 +450,40 @@ pub fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
         ),
       )
     }
-    SavedEditUserForm(Error(HttpError(response)))
-      if response.status == 400 || response.status == 401
-    -> {
-      let edit_user_form =
-        utils.add_form_root_error(model.edit_user_form, response.body)
-      #(Model(..model, edit_user_form:, editing_user: None), effect.none())
-    }
-    SavedEditUserForm(Error(rsvp.HttpError(response)))
-      if response.status == 422 || response.status == 409
-    -> {
-      let edit_user_form = case
-        json.parse(response.body, user.field_error_decoder())
-      {
-        Ok(#(field, message)) ->
-          utils.add_form_custom_error(
-            model.edit_user_form,
-            field |> user.form_field_to_string,
-            message,
-          )
-        Error(_) -> model.edit_user_form
+    SavedEditUserForm(Error(rsvp.HttpError(response))) -> {
+      case json.parse(response.body, error.decoder()) {
+        Ok(error.ValidationError(field:, message:))
+        | Ok(error.ConflictError(field:, message:)) -> {
+          let edit_user_form =
+            utils.add_form_custom_error(model.edit_user_form, field, message)
+          #(Model(..model, edit_user_form:), effect.none())
+        }
+        Ok(err) -> #(
+          model,
+          fx.toast(
+            title: "Error",
+            description: error.to_string(err),
+            variant: toast.Danger,
+          ),
+        )
+        Error(_) -> #(
+          model,
+          fx.toast(
+            title: "Error",
+            description: "Failed to edit user.",
+            variant: toast.Danger,
+          ),
+        )
       }
-      #(Model(..model, edit_user_form:, editing_user: None), effect.none())
     }
-    SavedEditUserForm(Error(_)) -> {
-      #(
-        model,
-        fx.toast(
-          title: "Error",
-          description: "Failed to save settings.",
-          variant: toast.Danger,
-        ),
-      )
-    }
+    SavedEditUserForm(Error(_)) -> #(
+      model,
+      fx.toast(
+        title: "Error",
+        description: "Failed to edit user.",
+        variant: toast.Danger,
+      ),
+    )
   }
 }
 

@@ -1,6 +1,5 @@
 import components
 import gleam/http/response
-
 import gleam/json
 import gleam/list
 import gleam/option.{None, Some}
