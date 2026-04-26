@@ -7,6 +7,7 @@ import gleam/erlang/process
 import gleam/http/request.{type Request}
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/otp/actor
 import pog
 import web
 import wisp
@@ -21,12 +22,12 @@ fn get_database_url() -> String {
   }
 }
 
-pub fn connect_to_db() -> pog.Connection {
+pub fn connect_to_db() -> #(pog.Connection, process.Pid) {
   let database_url = get_database_url()
   let pool_name = process.new_name("test_db")
   let assert Ok(pog_config) = pog.url_config(pool_name, database_url)
-  let _ = pog.start(pog_config)
-  pog.named_connection(pool_name)
+  let assert Ok(actor.Started(pid:, ..)) = pog.start(pog_config)
+  #(pog.named_connection(pool_name), pid)
 }
 
 pub fn migrate_db() -> Nil {
@@ -61,10 +62,11 @@ pub fn truncate_db(db: pog.Connection) -> Nil {
 }
 
 pub fn with_db(test_fn: fn(pog.Connection, web.Context) -> Nil) -> Nil {
-  let db = connect_to_db()
+  let #(db, pid) = connect_to_db()
   truncate_db(db)
   let ctx = create_context(db)
   test_fn(db, ctx)
+  process.send_exit(pid)
 }
 
 pub fn seed_user(db: pog.Connection, username: String) -> #(Int, String) {
