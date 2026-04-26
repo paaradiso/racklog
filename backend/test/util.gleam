@@ -8,7 +8,9 @@ import gleam/http/request.{type Request}
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/otp/actor
+import gleam/time/timestamp
 import pog
+import racklog/user
 import web
 import wisp
 import wisp/simulate
@@ -106,4 +108,28 @@ pub fn simulate_session_cookie(
   value: String,
 ) -> Request(wisp.Connection) {
   simulate.cookie(req, "session_id", value, wisp.Signed)
+}
+
+pub fn create_user_dto() {
+  user.UserDto(
+    id: 1,
+    username: "user",
+    email: "user@test.com",
+    role: user.UserRole,
+    preferred_unit: user.Kg,
+    created_at: timestamp.unix_epoch,
+    updated_at: timestamp.unix_epoch,
+  )
+}
+
+pub fn create_admin_user_dto() {
+  user.UserDto(
+    id: 2,
+    username: "admin",
+    email: "admin@test.com",
+    role: user.AdminRole,
+    preferred_unit: user.Kg,
+    created_at: timestamp.unix_epoch,
+    updated_at: timestamp.unix_epoch,
+  )
 }

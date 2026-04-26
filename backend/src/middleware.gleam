@@ -48,7 +48,9 @@ pub fn load_session(
         user.updated_at,
       )
 
-    Ok(next(Context(..ctx, session_id: Some(session_id), user: Some(user_dto))))
+    Context(..ctx, session_id: Some(session_id), user: Some(user_dto))
+    |> next
+    |> Ok
   }
 
   case result {
