@@ -28,3 +28,4 @@ todo:
 - [ ] other workout types? climbing?
 - [x] ~~add OutMsg type (in admin.gleam?) and show toasts in frontend.gleam~~ show toasts
 - [x] change login to use username (or both?)
+- [ ] add oidc auth support. support linking existing accounts to oidc. only use the provider to seed the user data, then "detach" it from the app so users can change their details on the app.
