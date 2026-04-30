@@ -5,6 +5,7 @@ import gleam/http.{Delete, Get, Patch, Post}
 import middleware
 import web.{type Context}
 import wisp.{type Request, type Response}
+import workout/workout
 
 pub fn handle_request(req: Request, ctx: Context) -> Response {
   let req = wisp.method_override(req)
@@ -32,6 +33,9 @@ fn handle_authenticated(req: Request, ctx: Context) -> Response {
 
     Get, ["api", "equipment"] -> equipment.list(req, ctx)
     _, ["api", "equipment"] -> wisp.method_not_allowed([Get])
+
+    Get, ["api", "workouts"] -> workout.list(req, ctx)
+    _, ["api", "workouts"] -> wisp.method_not_allowed([Get])
 
     Get, ["api", "me"] -> auth.me(req, ctx)
     _, ["api", "me"] -> wisp.method_not_allowed([Get])
