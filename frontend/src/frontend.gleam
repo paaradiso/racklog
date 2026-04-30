@@ -17,6 +17,7 @@ import racklog/user.{type UserDto, AdminRole, UserRole}
 import route/admin
 import route/equipment
 import route/exercises
+import route/index
 import route/login
 import route/settings
 import rsvp
@@ -43,7 +44,7 @@ type Path {
 }
 
 type Route {
-  Index
+  Index(index.Model)
   Equipment(equipment.Model)
   Exercises(exercises.Model)
   Login(login.Model)
@@ -63,6 +64,7 @@ type Msg {
   SubmittedLogout
   GotLogoutResponse(Result(response.Response(String), rsvp.Error))
 
+  IndexMsg(index.Msg)
   EquipmentMsg(equipment.Msg)
   ExercisesMsg(exercises.Msg)
   LoginMsg(login.Msg)
@@ -102,7 +104,11 @@ fn require_admin(
 
 fn uri_to_route(uri: Uri, user: User) -> #(Route, Effect(Msg)) {
   case uri.path_segments(uri.path) {
-    [] | [""] -> #(Index, effect.none())
+    [] | [""] -> {
+      use _ <- require_authentication(user, uri)
+      let #(model, fx) = index.init()
+      #(Index(model), effect.map(fx, IndexMsg))
+    }
     ["equipment"] -> {
       let #(model, fx) = equipment.init()
       #(Equipment(model), effect.map(fx, EquipmentMsg))
@@ -229,6 +235,10 @@ fn update(model model: Model, msg msg: Msg) -> #(Model, Effect(Msg)) {
     GotLogoutResponse(Error(_)), _ -> {
       #(model, effect.none())
     }
+    IndexMsg(route_msg), Index(route_model) -> {
+      let #(m, fx) = index.update(route_model, route_msg)
+      #(Model(..model, route: Index(m)), effect.map(fx, IndexMsg))
+    }
     EquipmentMsg(route_msg), Equipment(route_model) -> {
       let #(m, fx) = equipment.update(route_model, route_msg)
       #(Model(..model, route: Equipment(m)), effect.map(fx, EquipmentMsg))
@@ -290,7 +300,7 @@ fn view_app(user: UserDto, model: Model) -> Element(Msg) {
     html.div(
       [attribute.class("flex overflow-hidden flex-1 w-full min-h-0")],
       case model.route {
-        Index -> [html.text("index")]
+        Index(m) -> view_route(m, index.view, IndexMsg)
         Equipment(m) -> view_route(m, equipment.view, EquipmentMsg)
         Exercises(m) -> view_route(m, exercises.view, ExercisesMsg)
         Admin(m) -> view_route(m, admin.view, AdminMsg)
