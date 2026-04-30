@@ -4,6 +4,7 @@ import gleam/json
 import gleam/string
 import gleam/time/duration
 import gleam/time/timestamp.{type Timestamp}
+import racklog/util
 
 pub type AppUserRole {
   AdminRole
@@ -45,26 +46,14 @@ pub fn preferred_unit_decoder() -> decode.Decoder(PreferredUnit) {
   }
 }
 
-pub fn timestamp_decoder() -> decode.Decoder(Timestamp) {
-  use timestamp_string <- decode.then(decode.string)
-
-  case timestamp.parse_rfc3339(timestamp_string) {
-    Ok(time) -> decode.success(time)
-    Error(_) -> {
-      timestamp.system_time()
-      |> decode.failure("RFC 3339 formatted timestamp")
-    }
-  }
-}
-
 pub fn decoder() -> decode.Decoder(UserDto) {
   use id <- decode.field("id", decode.int)
   use username <- decode.field("username", decode.string)
   use email <- decode.field("email", decode.string)
   use role <- decode.field("role", role_decoder())
   use preferred_unit <- decode.field("preferred_unit", preferred_unit_decoder())
-  use created_at <- decode.field("created_at", timestamp_decoder())
-  use updated_at <- decode.field("updated_at", timestamp_decoder())
+  use created_at <- decode.field("created_at", util.timestamp_decoder())
+  use updated_at <- decode.field("updated_at", util.timestamp_decoder())
   decode.success(UserDto(
     id:,
     username:,

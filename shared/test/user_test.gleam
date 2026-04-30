@@ -6,6 +6,7 @@ import gleam/string
 import gleam/time/timestamp
 import gleeunit/should
 import racklog/user
+import racklog/util
 
 pub fn role_decoder_admin_test() {
   decode.run(dynamic.string("admin"), user.role_decoder())
@@ -192,27 +193,27 @@ fn create_user() -> user.UserDto {
 }
 
 pub fn timestamp_decoder_valid_no_offset_test() {
-  json.parse("\"2026-04-23T00:00:00Z\"", user.timestamp_decoder())
+  json.parse("\"2026-04-23T00:00:00Z\"", util.timestamp_decoder())
   |> should.be_ok()
 }
 
 pub fn timestamp_decoder_valid_with_offset_test() {
-  json.parse("\"2026-04-23T00:00:00+10:00\"", user.timestamp_decoder())
+  json.parse("\"2026-04-23T00:00:00+10:00\"", util.timestamp_decoder())
   |> should.be_ok()
 }
 
 pub fn timestamp_decoder_invalid_string_test() {
-  json.parse("\"notatimestamp\"", user.timestamp_decoder())
+  json.parse("\"notatimestamp\"", util.timestamp_decoder())
   |> should.be_error()
 }
 
 pub fn timestamp_decoder_non_string_test() {
-  json.parse("123", user.timestamp_decoder())
+  json.parse("123", util.timestamp_decoder())
   |> should.be_error()
 }
 
 pub fn timestamp_decoder_empty_string_test() {
-  json.parse("\"\"", user.timestamp_decoder())
+  json.parse("\"\"", util.timestamp_decoder())
   |> should.be_error()
 }
 
